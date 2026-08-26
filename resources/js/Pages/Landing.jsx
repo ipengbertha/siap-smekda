@@ -8,14 +8,11 @@ import {
     Lock,
     MessageCircle,
     ChevronDown,
+    Link2,
+    Mail,
+    MapPin,
+    Phone,
 } from 'lucide-react';
-
-const steps = [
-    { number: '01', title: 'Sampaikan', desc: 'Kirim aduan atau aspirasi lewat form singkat.' },
-    { number: '02', title: 'Diverifikasi', desc: 'Admin memeriksa dan menentukan tujuan laporan.' },
-    { number: '03', title: 'Diproses', desc: 'Laporan ditindaklanjuti oleh pihak terkait.' },
-    { number: '04', title: 'Selesai', desc: 'Kamu bisa memantau hingga masalah tuntas.' },
-];
 
 const features = [
     {
@@ -35,26 +32,7 @@ const features = [
     },
 ];
 
-const faqs = [
-    {
-        q: 'Apakah harus punya akun untuk mengirim laporan?',
-        a: 'Tidak. Kamu bisa mengirim aduan atau aspirasi secara anonim tanpa membuat akun.',
-    },
-    {
-        q: 'Apakah identitas saya bisa disembunyikan?',
-        a: 'Ya. Saat mengirim laporan, kamu bisa memilih opsi "Kirim secara anonim".',
-    },
-    {
-        q: 'Bagaimana cara mengetahui status laporan saya?',
-        a: 'Gunakan kode laporan yang kamu terima setelah mengirim, lalu masukkan di halaman Lacak Aduan.',
-    },
-    {
-        q: 'Apa bedanya aduan dan aspirasi?',
-        a: 'Aduan untuk melaporkan masalah (misal fasilitas rusak), aspirasi untuk menyampaikan ide atau saran perbaikan sekolah.',
-    },
-];
-
-export default function Landing({ canLogin, canRegister }) {
+export default function Landing({ canLogin, canRegister, hero, footer, stats, steps, faqs }) {
     const [trackCode, setTrackCode] = useState('');
     const [openFaq, setOpenFaq] = useState(null);
 
@@ -101,11 +79,10 @@ export default function Landing({ canLogin, canRegister }) {
             {/* Hero */}
             <section className="mx-auto max-w-3xl px-6 pt-20 pb-16 text-center">
                 <h1 className="text-4xl sm:text-5xl font-bold text-navy leading-tight">
-                    Suaramu, Perubahanmu.
+                    {hero.title}
                 </h1>
                 <p className="mt-4 text-gray-600 text-lg max-w-xl mx-auto">
-                    Sampaikan aduan dan aspirasi untuk menciptakan lingkungan
-                    SMKN 2 Surabaya yang lebih baik.
+                    {hero.subtitle}
                 </p>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                     <Link
@@ -122,6 +99,20 @@ export default function Landing({ canLogin, canRegister }) {
                     </Link>
                 </div>
             </section>
+
+            {/* Statistik */}
+            {stats.length > 0 && (
+                <section className="mx-auto max-w-4xl px-6 mb-16">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                        {stats.map((stat) => (
+                            <div key={stat.label}>
+                                <p className="text-2xl sm:text-3xl font-bold text-navy">{stat.value}</p>
+                                <p className="text-xs sm:text-sm text-gray-500 mt-1">{stat.label}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Quick action cards */}
             <section className="mx-auto max-w-4xl px-6 -mt-2 mb-20">
@@ -220,41 +211,43 @@ export default function Landing({ canLogin, canRegister }) {
             </section>
 
             {/* FAQ */}
-            <section id="faq" className="mx-auto max-w-2xl px-6 mb-20">
-                <h2 className="text-2xl font-bold text-navy text-center mb-8">
-                    Pertanyaan Umum
-                </h2>
-                <div className="space-y-2">
-                    {faqs.map((faq, index) => (
-                        <div
-                            key={index}
-                            className="bg-white rounded-lg border border-gray-100 overflow-hidden"
-                        >
-                            <button
-                                onClick={() =>
-                                    setOpenFaq(openFaq === index ? null : index)
-                                }
-                                className="w-full flex items-center justify-between px-5 py-4 text-left"
+            {faqs.length > 0 && (
+                <section id="faq" className="mx-auto max-w-2xl px-6 mb-20">
+                    <h2 className="text-2xl font-bold text-navy text-center mb-8">
+                        Pertanyaan Umum
+                    </h2>
+                    <div className="space-y-2">
+                        {faqs.map((faq, index) => (
+                            <div
+                                key={index}
+                                className="bg-white rounded-lg border border-gray-100 overflow-hidden"
                             >
-                                <span className="font-medium text-navy text-sm">
-                                    {faq.q}
-                                </span>
-                                <ChevronDown
-                                    size={18}
-                                    className={`text-gray-400 transition-transform flex-shrink-0 ml-2 ${
-                                        openFaq === index ? 'rotate-180' : ''
-                                    }`}
-                                />
-                            </button>
-                            {openFaq === index && (
-                                <p className="px-5 pb-4 text-sm text-gray-500">
-                                    {faq.a}
-                                </p>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </section>
+                                <button
+                                    onClick={() =>
+                                        setOpenFaq(openFaq === index ? null : index)
+                                    }
+                                    className="w-full flex items-center justify-between px-5 py-4 text-left"
+                                >
+                                    <span className="font-medium text-navy text-sm">
+                                        {faq.q}
+                                    </span>
+                                    <ChevronDown
+                                        size={18}
+                                        className={`text-gray-400 transition-transform flex-shrink-0 ml-2 ${
+                                            openFaq === index ? 'rotate-180' : ''
+                                        }`}
+                                    />
+                                </button>
+                                {openFaq === index && (
+                                    <p className="px-5 pb-4 text-sm text-gray-500">
+                                        {faq.a}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* CTA */}
             <section className="bg-navy py-16 px-6 text-center">
@@ -273,9 +266,57 @@ export default function Landing({ canLogin, canRegister }) {
             </section>
 
             {/* Footer */}
-            <footer className="bg-navy border-t border-navy-light py-8 px-6">
-                <div className="mx-auto max-w-6xl text-center text-sm text-marble-light">
-                    © 2026 SIAP SMEKDA — SMKN 2 Surabaya
+            <footer className="bg-navy border-t border-navy-light py-10 px-6">
+                <div className="mx-auto max-w-4xl">
+                    <div className="grid sm:grid-cols-2 gap-6 text-sm text-marble-light mb-6">
+                        <div className="space-y-2">
+                            {footer.email && (
+                                <p className="flex items-center gap-2">
+                                    <Mail size={16} /> {footer.email}
+                                </p>
+                            )}
+                            {footer.phone && (
+                                <p className="flex items-center gap-2">
+                                    <Phone size={16} /> {footer.phone}
+                                </p>
+                            )}
+                        </div>
+                        {footer.address && (
+                            <div className="flex items-start gap-2">
+                                <MapPin size={16} className="mt-0.5 flex-shrink-0" />
+                                <p>{footer.address}</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {(footer.instagram || footer.facebook || footer.youtube || footer.whatsapp) && (
+                        <div className="flex justify-center gap-4 mb-6 text-sm">
+                            {footer.instagram && (
+                                <a href={footer.instagram} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-marble-light hover:text-white transition">
+                                    <Link2 size={16} /> Instagram
+                                </a>
+                            )}
+                            {footer.facebook && (
+                                <a href={footer.facebook} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-marble-light hover:text-white transition">
+                                    <Link2 size={16} /> Facebook
+                                </a>
+                            )}
+                            {footer.youtube && (
+                                <a href={footer.youtube} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-marble-light hover:text-white transition">
+                                    <Link2 size={16} /> YouTube
+                                </a>
+                            )}
+                            {footer.whatsapp && (
+                                <a href={`https://wa.me/${footer.whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-marble-light hover:text-white transition">
+                                    <Phone size={16} /> WhatsApp
+                                </a>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="text-center text-sm text-marble-light border-t border-navy-light pt-6">
+                        {footer.copyright}
+                    </div>
                 </div>
             </footer>
         </div>

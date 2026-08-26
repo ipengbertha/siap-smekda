@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
+    const isAdmin = user.role === 'admin';
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -30,6 +31,57 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Dashboard
                                 </NavLink>
+
+                                {/* MENU ADMIN — cuma tampil kalau role admin */}
+                                {isAdmin && (
+                                    <div className="relative flex items-center">
+                                        <Dropdown>
+                                            <Dropdown.Trigger>
+                                                <span className="inline-flex rounded-md">
+                                                    <button
+                                                        type="button"
+                                                        className={
+                                                            (route().current('admin.landing.*')
+                                                                ? 'border-indigo-400 text-gray-900'
+                                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700') +
+                                                            ' inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none'
+                                                        }
+                                                    >
+                                                        Landing Page
+
+                                                        <svg
+                                                            className="-me-0.5 ms-1.5 h-4 w-4"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 20 20"
+                                                            fill="currentColor"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                </span>
+                                            </Dropdown.Trigger>
+
+                                            <Dropdown.Content>
+                                                <Dropdown.Link href={route('admin.landing.settings')}>
+                                                    Pengaturan Umum
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.landing.stats')}>
+                                                    Statistik
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.landing.faqs')}>
+                                                    FAQ
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.landing.steps')}>
+                                                    Cara Kerja
+                                                </Dropdown.Link>
+                                            </Dropdown.Content>
+                                        </Dropdown>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -134,6 +186,39 @@ export default function AuthenticatedLayout({ header, children }) {
                         >
                             Dashboard
                         </ResponsiveNavLink>
+
+                        {/* MENU ADMIN (mobile) — cuma tampil kalau role admin */}
+                        {isAdmin && (
+                            <>
+                                <div className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                                    Landing Page
+                                </div>
+                                <ResponsiveNavLink
+                                    href={route('admin.landing.settings')}
+                                    active={route().current('admin.landing.settings')}
+                                >
+                                    Pengaturan Umum
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.landing.stats')}
+                                    active={route().current('admin.landing.stats')}
+                                >
+                                    Statistik
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.landing.faqs')}
+                                    active={route().current('admin.landing.faqs')}
+                                >
+                                    FAQ
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.landing.steps')}
+                                    active={route().current('admin.landing.steps')}
+                                >
+                                    Cara Kerja
+                                </ResponsiveNavLink>
+                            </>
+                        )}
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4">
