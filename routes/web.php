@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\TrackController;
 use App\Http\Controllers\Admin\LandingStatController;
 use App\Http\Controllers\Admin\LandingSettingController;
 use App\Http\Controllers\Admin\LandingFaqController;
@@ -50,5 +51,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::delete('/landing/steps/{step}', [LandingStepController::class, 'destroy'])->name('landing.steps.destroy');
     Route::post('/landing/steps/reorder', [LandingStepController::class, 'reorder'])->name('landing.steps.reorder');
 });
+
+Route::get('/track', [TrackController::class, 'index'])->name('track.index');
+Route::get('/track/{code}', [TrackController::class, 'show'])->name('track.show');
 
 require __DIR__.'/auth.php';

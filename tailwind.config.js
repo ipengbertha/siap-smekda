@@ -12,26 +12,16 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                serif: ['Marcellus', 'serif'],
+                sans: ['Instrument Sans', 'sans-serif'],
+                display: ['Titan One', 'cursive'],
             },
             colors: {
-                cream: {
-                    DEFAULT: '#FFF8E7',
-                    light: '#FFFBF2',
-                },
-                navy: {
-                    DEFAULT: '#003049',
-                    light: '#0A4A6B',
-                },
-                marble: {
-                    DEFAULT: '#669BBC',
-                    light: '#8FB4CE',
-                    dark: '#4A7A99',
-                },
-                crimson: {
-                    DEFAULT: '#C1121F',
-                    dark: '#780000',
-                },
+                navy: { DEFAULT: '#11012e', light: '#2a0c62' },
+                crimson: { DEFAULT: '#ff018f', dark: '#cc0172' },
+                gold: { DEFAULT: '#ffcc00' },
+                purple: { DEFAULT: '#a78bfa' },
+                mauve: { 100: '#DFB6B2', 300: '#854F6C', 500: '#2a0c62', 700: '#2a0c62', 900: '#11012e' },
             },
         },
     },

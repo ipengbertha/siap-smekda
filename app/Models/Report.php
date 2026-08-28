@@ -24,7 +24,7 @@ class Report extends Model
         'status',
         'priority',
         'is_anonymous',
-        'is_featured', // tambahkan ini
+        'is_featured', 
         'reporter_name',
         'reporter_contact',
     ];
