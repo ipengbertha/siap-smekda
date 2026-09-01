@@ -2,11 +2,13 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, Clock, MessageCircle, Star } from 'lucide-react';
 
 const statusMap = {
-    pending:      { label: 'Menunggu Verifikasi', color: 'bg-yellow-100 text-yellow-700' },
-    diverifikasi: { label: 'Terverifikasi',        color: 'bg-blue-100 text-blue-700' },
-    diproses:     { label: 'Diproses',             color: 'bg-marble/30 text-navy' },
-    selesai:      { label: 'Selesai',              color: 'bg-green-100 text-green-700' },
-    ditolak:      { label: 'Ditolak',              color: 'bg-red-100 text-crimson' },
+    terkirim:   { label: 'Terkirim',    color: 'bg-yellow-100 text-yellow-700' },
+    diterima:   { label: 'Diterima',    color: 'bg-blue-100 text-blue-700' },
+    diproses:   { label: 'Diproses',    color: 'bg-marble/30 text-navy' },
+    ditanggapi: { label: 'Ditanggapi',  color: 'bg-purple-100 text-purple-700' },
+    selesai:    { label: 'Selesai',     color: 'bg-green-100 text-green-700' },
+    ditolak:    { label: 'Ditolak',     color: 'bg-red-100 text-crimson' },
+    diblokir:   { label: 'Diblokir',    color: 'bg-gray-800 text-white' },
 };
 
 export default function TrackShow({ report }) {

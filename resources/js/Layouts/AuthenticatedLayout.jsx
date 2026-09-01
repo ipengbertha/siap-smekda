@@ -82,6 +82,68 @@ export default function AuthenticatedLayout({ header, children }) {
                                         </Dropdown>
                                     </div>
                                 )}
+
+                                {/* MENU KELOLA — cuma tampil kalau role admin */}
+                                {isAdmin && (
+                                    <div className="relative flex items-center">
+                                        <Dropdown>
+                                            <Dropdown.Trigger>
+                                                <span className="inline-flex rounded-md">
+                                                    <button
+                                                        type="button"
+                                                        className={
+                                                            (route().current('admin.reports.*') ||
+                                                            route().current('admin.responses.*') ||
+                                                            route().current('admin.categories.*') ||
+                                                            route().current('admin.destinations.*') ||
+                                                            route().current('admin.banned-words.*') ||
+                                                            route().current('admin.users.*')
+                                                                ? 'border-indigo-400 text-gray-900'
+                                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700') +
+                                                            ' inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none'
+                                                        }
+                                                    >
+                                                        Kelola
+
+                                                        <svg
+                                                            className="-me-0.5 ms-1.5 h-4 w-4"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 20 20"
+                                                            fill="currentColor"
+                                                        >
+                                                            <path
+                                                                fillRule="evenodd"
+                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                                clipRule="evenodd"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                </span>
+                                            </Dropdown.Trigger>
+
+                                            <Dropdown.Content>
+                                                <Dropdown.Link href={route('admin.reports.index')}>
+                                                    Kelola Aduan
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.responses.index')}>
+                                                    Kelola Tanggapan
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.categories.index')}>
+                                                    Kelola Kategori
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.destinations.index')}>
+                                                    Kelola Tujuan
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.banned-words.index')}>
+                                                    Kata Terlarang
+                                                </Dropdown.Link>
+                                                <Dropdown.Link href={route('admin.users.index')}>
+                                                    Kelola User
+                                                </Dropdown.Link>
+                                            </Dropdown.Content>
+                                        </Dropdown>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -216,6 +278,46 @@ export default function AuthenticatedLayout({ header, children }) {
                                     active={route().current('admin.landing.steps')}
                                 >
                                     Cara Kerja
+                                </ResponsiveNavLink>
+
+                                <div className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                                    Kelola
+                                </div>
+                                <ResponsiveNavLink
+                                    href={route('admin.reports.index')}
+                                    active={route().current('admin.reports.*')}
+                                >
+                                    Kelola Aduan
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.responses.index')}
+                                    active={route().current('admin.responses.*')}
+                                >
+                                    Kelola Tanggapan
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.categories.index')}
+                                    active={route().current('admin.categories.*')}
+                                >
+                                    Kelola Kategori
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.destinations.index')}
+                                    active={route().current('admin.destinations.*')}
+                                >
+                                    Kelola Tujuan
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.banned-words.index')}
+                                    active={route().current('admin.banned-words.*')}
+                                >
+                                    Kata Terlarang
+                                </ResponsiveNavLink>
+                                <ResponsiveNavLink
+                                    href={route('admin.users.index')}
+                                    active={route().current('admin.users.*')}
+                                >
+                                    Kelola User
                                 </ResponsiveNavLink>
                             </>
                         )}

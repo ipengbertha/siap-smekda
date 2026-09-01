@@ -23,6 +23,7 @@ class TrackController extends Controller
                 'rating',
             ])
             ->where('code', $code)
+            ->where('status', '!=', 'diblokir')
             ->firstOrFail();
 
         return Inertia::render('Track/Show', [

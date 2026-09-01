@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -22,6 +23,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'status',
     ];
 
     /**
@@ -46,9 +49,29 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-    
-public function reports(): HasMany
+
+    public function reports(): HasMany
     {
         return $this->hasMany(Report::class);
+    }
+
+    public function reportResponses(): HasMany
+    {
+        return $this->hasMany(ReportResponse::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function isBlocked(): bool
+    {
+        return $this->status === 'blocked';
     }
 }

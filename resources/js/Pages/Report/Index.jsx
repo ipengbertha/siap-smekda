@@ -3,11 +3,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
 const statusStyles = {
     terkirim: 'bg-gray-100 text-gray-700',
-    diverifikasi: 'bg-blue-100 text-blue-700',
+    diterima: 'bg-blue-100 text-blue-700',
     diproses: 'bg-yellow-100 text-yellow-700',
-    ditindaklanjuti: 'bg-purple-100 text-purple-700',
+    ditanggapi: 'bg-purple-100 text-purple-700',
     selesai: 'bg-green-100 text-green-700',
     ditolak: 'bg-red-100 text-red-700',
+    diblokir: 'bg-black text-white',
 };
 
 export default function Index({ reports }) {

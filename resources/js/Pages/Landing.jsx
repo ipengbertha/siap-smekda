@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useInView } from '@/hooks/useInView';
 import {
     AlertTriangle,
     Lightbulb,
@@ -7,6 +8,8 @@ import {
     ShieldCheck,
     Lock,
     MessageCircle,
+    MessageSquare,
+    ThumbsUp,
     ChevronDown,
     Link2,
     Mail,
@@ -17,21 +20,9 @@ import {
 } from 'lucide-react';
 
 const features = [
-    {
-        icon: Lock,
-        title: 'Privasi Terjaga',
-        desc: 'Laporan dapat dikirim secara anonim tanpa membuat akun.',
-    },
-    {
-        icon: ShieldCheck,
-        title: 'Terstruktur',
-        desc: 'Setiap laporan punya kode unik dan status yang jelas.',
-    },
-    {
-        icon: MessageCircle,
-        title: 'Responsif',
-        desc: 'Admin memberikan tanggapan langsung terhadap laporanmu.',
-    },
+    { icon: Lock, title: 'Tetap Privat', desc: 'Gunakan fitur anonim untuk menjaga identitasmu tetap tersembunyi dari publik.', color: 'from-crimson/40 to-crimson/10 text-crimson' },
+    { icon: ShieldCheck, title: 'Nggak Takut Kehilangan Laporan', desc: 'Setiap laporan punya kode unik — pakai untuk menemukan dan memantau perkembangannya kapan saja.', color: 'from-purple/40 to-purple/10 text-purple' },
+    { icon: MessageCircle, title: 'Lebih Cepat Ditindaklanjuti', desc: 'Laporan diteruskan ke pihak terkait dengan alur yang jelas.', color: 'from-gold/40 to-gold/10 text-gold' },
 ];
 
 // Data contoh — nanti diganti data asli dari controller (lihat catatan di bawah)
@@ -65,16 +56,57 @@ function GlassCard({ children, className = '' }) {
     );
 }
 
+function CountUp({ value, duration = 1200 }) {
+    const [ref, isInView] = useInView();
+    const [display, setDisplay] = useState(value);
+
+    useEffect(() => {
+        if (!isInView) return;
+        const numMatch = value.match(/[\d.,]+/);
+        if (!numMatch) return; // non-numeric (mis. "< 2 Hari") langsung tampil apa adanya
+        const target = parseFloat(numMatch[0].replace(/\./g, '').replace(',', '.'));
+        const prefix = value.slice(0, numMatch.index);
+        const suffix = value.slice(numMatch.index + numMatch[0].length);
+        let start = 0;
+        const startTime = performance.now();
+
+        const tick = (now) => {
+            const progress = Math.min((now - startTime) / duration, 1);
+            const current = Math.floor(progress * target);
+            setDisplay(`${prefix}${current.toLocaleString('id-ID')}${suffix}`);
+            if (progress < 1) requestAnimationFrame(tick);
+            else setDisplay(value);
+        };
+        requestAnimationFrame(tick);
+    }, [isInView]);
+
+    return <span ref={ref}>{display}</span>;
+}
+
+function Reveal({ children, className = '' }) {
+    const [ref, isInView] = useInView();
+    return (
+        <div
+            ref={ref}
+            className={`transition-all duration-700 ease-out ${
+                isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            } ${className}`}
+        >
+            {children}
+        </div>
+    );
+}
+
 export default function Landing({ canLogin, canRegister, hero, footer, stats, steps, faqs }) {
-    const [trackCode, setTrackCode] = useState('');
+    const [navTrackCode, setNavTrackCode] = useState('');
+    const [sectionTrackCode, setSectionTrackCode] = useState('');
     const [openFaq, setOpenFaq] = useState(null);
 
-    const handleTrack = (e) => {
+    const handleTrack = (e, code) => {
         e.preventDefault();
-        if (!trackCode.trim()) return;
-        router.get(route('track.show', trackCode.trim().toUpperCase()));
+        if (!code.trim()) return;
+        router.get(route('track.show', code.trim().toUpperCase()));
     };
-
     return (
         <div className="min-h-screen relative">
             <Head title="SIAP SMEKDA - Sistem Informasi Aspirasi & Pengaduan" />
@@ -82,18 +114,17 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
             {/* Global background gradient + glow blobs, fixed behind everything */}
             <div className="fixed inset-0 -z-10 overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-navy via-navy to-mauve-900"></div>
-                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-crimson/25 rounded-full blur-[120px]"></div>
-                <div className="absolute top-[30%] left-[-15%] w-[450px] h-[450px] bg-mauve-500/40 rounded-full blur-[120px]"></div>
-                <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-mauve-300/30 rounded-full blur-[120px]"></div>
-                <div className="absolute bottom-[20%] left-[20%] w-[350px] h-[350px] bg-mauve-700/40 rounded-full blur-[120px]"></div>
+                <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-crimson/25 rounded-full blur-[120px] animate-float"></div>
+                <div className="absolute top-[30%] left-[-15%] w-[450px] h-[450px] bg-mauve-500/40 rounded-full blur-[120px] animate-float [animation-delay:2s]"></div>
+                <div className="absolute bottom-[-10%] right-[10%] w-[400px] h-[400px] bg-mauve-300/30 rounded-full blur-[120px] animate-float [animation-delay:4s]"></div>
+                <div className="absolute bottom-[20%] left-[20%] w-[350px] h-[350px] bg-mauve-700/40 rounded-full blur-[120px] animate-float [animation-delay:6s]"></div>
             </div>
 
             {/* Navbar */}
             <nav className="sticky top-0 z-20 bg-gold">
-                <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between gap-4">
+                <div className="mx-auto max-w-6xl px-6 py-2 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <img src="/images/logo.png" alt="SIAP SMEKDA" className="h-8 w-auto" />
-                        <span className="font-sans font-bold text-navy text-lg">SIAP SMEKDA</span>
+                        <img src="/images/SIAP-SMEKDA.png" alt="SIAP SMEKDA" className="h-12 w-auto" />
                     </div>
                     <div className="hidden sm:flex items-center gap-5 text-sm font-semibold text-navy flex-shrink-0">
                         <a href="#statistik" className="hover:text-crimson transition">Statistik</a>
@@ -102,12 +133,12 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                         <a href="#keunggulan" className="hover:text-crimson transition">Keunggulan</a>
                         <a href="#faq" className="hover:text-crimson transition">FAQ</a>
                     </div>
-                    <form onSubmit={handleTrack} className="hidden lg:flex items-center gap-2 bg-white/80 rounded-full px-3 py-1.5 w-52 flex-shrink-0">
+                    <form onSubmit={(e) => handleTrack(e, navTrackCode)} className="hidden lg:flex items-center gap-2 bg-white/80 rounded-full px-3 py-1.5 w-52 flex-shrink-0">
                         <Search size={16} className="text-crimson flex-shrink-0" />
                         <input
                             type="text"
-                            value={trackCode}
-                            onChange={(e) => setTrackCode(e.target.value)}
+                            value={navTrackCode}
+                            onChange={(e) => setNavTrackCode(e.target.value)}
                             placeholder="Lacak kode aduan..."
                             className="flex-1 border-0 focus:ring-0 bg-transparent text-navy text-sm placeholder-navy/50 uppercase p-0"
                         />
@@ -118,9 +149,11 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                                 Masuk
                             </Link>
                         )}
-                        <Link href={canLogin ? route('login') : route('register')} className="bg-crimson text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-crimson-dark transition">
-                            Buat Akun
-                        </Link>
+                        {canRegister && (
+                            <Link href={route('register')} className="bg-crimson text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-crimson-dark transition">
+                                Buat Akun
+                            </Link>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -128,10 +161,9 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
             {/* Hero */}
             <section className="mx-auto max-w-3xl px-6 pt-12 pb-16 text-center relative">
                 <div className="inline-flex items-center justify-center bg-navy-light border border-purple/30 text-white text-sm font-bold px-6 py-2.5 rounded-full mb-6">
-                    SMK NEGERI 1 SURABAYA
+                    SMK NEGERI 2 SURABAYA
                 </div>
-                <h1 className="font-sans font-extrabold text-4xl sm:text-6xl text-purple leading-tight uppercase">
-                    {hero.title}
+                <h1 className="font-sans font-extrabold text-3xl sm:text-5xl text-purple leading-tight uppercase"> {hero.title}
                 </h1>
                 <p className="mt-5 text-white/60 text-lg max-w-xl mx-auto leading-relaxed">
                     {hero.subtitle}
@@ -140,62 +172,80 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
 
             {/* Statistik */}
             {stats.length > 0 && (
-                <section id="statistik" className="mx-auto max-w-4xl px-6 mb-20 relative">
-                    <div className="text-center mb-8">
-                        <SectionKicker label="STATISTIK" />
-                        <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white">
-                            Dipercaya Warga Sekolah
-                        </h2>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                        {stats.map((stat) => (
-                            <GlassCard key={stat.label} className="p-5">
-                                <p className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</p>
-                                <p className="text-xs sm:text-sm text-white/50 mt-1">{stat.label}</p>
-                            </GlassCard>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {/* Quick action cards */}
-            <section className="mx-auto max-w-4xl px-6 mb-24 relative">
-                <GlassCard className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
-                    <div className="p-7 text-center">
-                        <AlertTriangle className="mx-auto text-crimson" size={26} />
-                        <p className="mt-3 font-medium text-white">Buat Aduan</p>
-                        <p className="text-sm text-white/50 mt-1">
-                            Laporkan masalah di lingkungan sekolah.
-                        </p>
-                    </div>
-                    <div className="p-7 text-center">
-                        <Lightbulb className="mx-auto text-mauve-100" size={26} />
-                        <p className="mt-3 font-medium text-white">Sampaikan Aspirasi</p>
-                        <p className="text-sm text-white/50 mt-1">
-                            Berikan ide atau saran untuk sekolah.
-                        </p>
-                    </div>
-                    <div className="p-7 text-center">
-                        <Search className="mx-auto text-mauve-300" size={26} />
-                        <p className="mt-3 font-medium text-white">Pantau Laporan</p>
-                        <p className="text-sm text-white/50 mt-1">
-                            Cek perkembangan laporan yang dikirim.
-                        </p>
-                    </div>
-                </GlassCard>
-            </section>
-
-            {/* Cara Kerja — timeline style, tetap glass */}
-            <section id="cara-kerja" className="mx-auto max-w-5xl px-6 mb-24 relative">
-                <div className="text-center mb-12">
-                    <SectionKicker label="CARA KERJA" />
-                    <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
-                        Empat Langkah, Dari Suara Jadi Solusi
+                <Reveal>
+            <section id="statistik" className="mx-auto max-w-4xl px-6 mb-20 relative">
+                <div className="text-center mb-8">
+                    <SectionKicker label="TENTANG SIAP SMEKDA" />
+                    <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white">
+                        Suaramu, Bagian dari Perubahan.
                     </h2>
-                    <p className="text-white/50 max-w-md mx-auto">
-                        Prosesnya berurutan dan transparan, mulai dari kamu mengirim sampai masalahnya benar-benar ditindaklanjuti.
+                    <p className="text-white/50 max-w-md mx-auto mt-2">
+                        Setiap laporan yang masuk menunjukkan kepedulian warga sekolah.
                     </p>
                 </div>
+                <GlassCard className="p-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-white/10">
+                    {stats.map((stat) => {
+                        const isHighlight = stat.label.toLowerCase().includes('kepuasan');
+                        return (
+                            <div key={stat.label} className="p-6 text-center">
+                                <p className={`font-bold ${isHighlight ? 'text-3xl sm:text-4xl text-crimson' : 'text-2xl sm:text-3xl text-white'}`}>
+                                    <CountUp value={stat.value} />
+                                </p>
+                                <p className="text-xs sm:text-sm text-white/50 mt-1">{stat.label}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+                </GlassCard>
+            </section>
+            </Reveal>
+        )}
+
+            {/* Quick action cards */}
+            <Reveal>
+            <section className="mx-auto max-w-4xl px-6 mb-24 relative">
+                <div className="text-center mb-8">
+                <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white">
+                    Ada yang Ingin Kamu Sampaikan?
+                </h2>
+            </div>
+            <GlassCard className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-white/10">
+                <div className="p-7 text-center">
+                    <AlertTriangle className="mx-auto text-crimson" size={26} />
+                    <p className="mt-3 font-medium text-white">Laporkan Masalah</p>
+                    <p className="text-sm text-white/50 mt-1">
+                        Ada fasilitas atau layanan sekolah yang perlu diperhatikan? Ceritakan kepada kami.
+                    </p>
+                </div>
+                <div className="p-7 text-center">
+                    <Lightbulb className="mx-auto text-mauve-100" size={26} />
+                    <p className="mt-3 font-medium text-white">Bagikan Ide</p>
+                    <p className="text-sm text-white/50 mt-1">
+                        Punya gagasan yang bisa bikin sekolah lebih baik? Kami ingin dengar.
+                    </p>
+                </div>
+                <div className="p-7 text-center">
+                    <Search className="mx-auto text-mauve-300" size={26} />
+                    <p className="mt-3 font-medium text-white">Pantau Laporan</p>
+                    <p className="text-sm text-white/50 mt-1">
+                        Sudah kirim laporan? Lihat perkembangannya pakai kode laporanmu.
+                    </p>
+                </div>
+            </GlassCard>
+            </section>
+            </Reveal>
+
+            {/* Cara Kerja — timeline style, tetap glass */}
+            <Reveal>
+            <section id="cara-kerja" className="mx-auto max-w-5xl px-6 mb-24 relative">
+                <SectionKicker label="CARA KERJA" />
+                <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
+                    Dari Laporan, Menjadi Tindakan.
+                </h2>
+                <p className="text-white/50 max-w-md mb-5">
+                    Menyampaikan laporan nggak harus rumit. Ikuti empat langkah sederhana dan pantau prosesnya sampai selesai.
+                </p>
                 <div className="relative">
                     <div className="hidden sm:block absolute top-5 left-0 right-0 h-px bg-white/15"></div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
@@ -213,17 +263,19 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                     </div>
                 </div>
             </section>
+            </Reveal>
 
             {/* Aduan Publik — data contoh, ganti ke data asli nanti */}
+            <Reveal>
             <section id="aduan-publik" className="mx-auto max-w-5xl px-6 mb-24 relative">
                 <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-10 gap-4">
                     <div>
-                        <SectionKicker label="ADUAN PUBLIK" />
+                        <SectionKicker label="TRANSPARANSI" />
                         <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
-                            Yang Sedang Ditangani
+                            Lihat Apa yang Sedang Ditangani.
                         </h2>
                         <p className="text-white/50 max-w-md">
-                            Aduan yang diizinkan admin untuk dipublikasikan ke semua orang.
+                            Beberapa laporan yang sudah diverifikasi bisa dilihat di sini — biar kita sama-sama tahu apa yang lagi diperbaiki.
                         </p>
                     </div>
                     <Link href={route('track.index')} className="text-sm font-semibold text-gold hover:text-white transition whitespace-nowrap">
@@ -231,70 +283,111 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                     </Link>
                 </div>
                 <div className="grid sm:grid-cols-3 gap-6">
-                    {publicComplaints.map((item, i) => (
-                        <GlassCard key={i} className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="bg-purple/20 text-purple text-xs font-semibold px-3 py-1 rounded-full">
-                                    {item.category}
-                                </span>
-                                <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
-                                    item.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gold/20 text-gold'
-                                }`}>
-                                    {item.status}
-                                </span>
-                            </div>
-                            <p className="font-medium text-white leading-snug mb-4">{item.title}</p>
-                            <div className="flex items-center gap-4 text-sm text-white/50">
-                                <span>👍 {item.likes}</span>
-                                <span>💬 {item.comments}</span>
-                            </div>
-                        </GlassCard>
-                    ))}
+                    {publicComplaints.map((item, i) => {
+                        const progress = item.status === 'Selesai' ? 100 : item.status === 'Diproses' ? 60 : 25;
+                        return (
+                            <GlassCard key={i} className="p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="bg-purple/20 text-purple text-xs font-semibold px-3 py-1 rounded-full">
+                                        {item.category}
+                                    </span>
+                                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                                        item.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gold/20 text-gold'
+                                    }`}>
+                                        {item.status}
+                                    </span>
+                                </div>
+                                <p className="font-medium text-white leading-snug mb-4">{item.title}</p>
+                                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden mb-4">
+                                    <div
+                                        className={`h-full rounded-full ${item.status === 'Selesai' ? 'bg-emerald-400' : 'bg-gold'}`}
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-white/50">
+                                    <span className="flex items-center gap-1.5">
+                                        <ThumbsUp size={14} className="text-crimson/70" /> {item.likes}
+                                    </span>
+                                    <span className="flex items-center gap-1.5">
+                                        <MessageSquare size={14} className="text-purple/70" /> {item.comments}
+                                    </span>
+                                </div>
+                            </GlassCard>
+                        );
+                    })}
                 </div>
             </section>
+            </Reveal>
 
             {/* Lacak Aduan */}
-            <section className="mx-auto max-w-2xl px-6 mb-24 relative">
-                <GlassCard className="p-10 text-center">
-                    <SectionKicker label="LACAK ADUAN" />
-                    <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
-                        Sudah Mengirim Aduan?
-                    </h2>
-                    <p className="text-sm text-white/50 mb-8 max-w-md mx-auto">
-                        Masukkan kode aduanmu untuk melihat perkembangannya — meski dikirim secara anonim tanpa login.
-                    </p>
-                    <form onSubmit={handleTrack} className="flex items-center gap-2 bg-white/90 rounded-full pl-5 pr-2 py-2 max-w-lg mx-auto">
+            <Reveal>
+            <section className="mx-auto max-w-4xl px-6 mb-24 relative">
+                <GlassCard className="p-8 sm:p-10 grid sm:grid-cols-5 gap-8 items-center">
+                    <div className="sm:col-span-3 text-center sm:text-left">
+                        <SectionKicker label="LACAK LAPORAN" />
+                        <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
+                            Sudah Mengirim Laporan?
+                        </h2>
+                        <p className="text-sm text-white/50 mb-6 max-w-md">
+                            Masukkan kode laporanmu buat cek sampai mana prosesnya — nggak perlu nebak-nebak.
+                        </p>
+                        <form onSubmit={(e) => handleTrack(e, sectionTrackCode)} className="flex items-center gap-2 bg-white/90 rounded-full pl-5 pr-2 py-2">
                         <Search size={18} className="text-crimson flex-shrink-0" />
                         <input
                             type="text"
-                            value={trackCode}
-                            onChange={(e) => setTrackCode(e.target.value)}
-                            placeholder="Masukkan kode aduan, mis. ADU-2026-00123"
-                            className="flex-1 border-0 focus:ring-0 bg-transparent text-navy placeholder-navy/40 uppercase p-0 text-sm"
+                            value={sectionTrackCode}
+                            onChange={(e) => setSectionTrackCode(e.target.value)}
+                            placeholder="Masukkan kode laporan..."
+                            className="flex-1 border-0 focus:ring-0 bg-transparent text-navy placeholder-navy/40 uppercase placeholder:normal-case p-0 text-sm min-w-0"
                         />
-                        <button type="submit" className="bg-crimson text-white rounded-full p-2.5 hover:bg-crimson-dark transition flex-shrink-0">
-                            <ArrowRight size={16} />
+                        <button
+                            type="submit"
+                            className="bg-crimson text-white rounded-full px-4 py-2.5 hover:bg-crimson-dark transition flex-shrink-0 flex items-center gap-1.5 text-sm font-semibold whitespace-nowrap"
+                        >
+                            Lacak <ArrowRight size={16} />
                         </button>
                     </form>
-                    <p className="text-xs text-white/40 mt-4 flex items-center justify-center gap-1.5">
-                        <Lock size={12} /> Kode aduan diberikan otomatis setelah pengiriman berhasil.
-                    </p>
+                        <p className="text-xs text-white/40 mt-4 flex items-center gap-1.5 justify-center sm:justify-start">
+                            <Lock size={12} /> Belum punya kode? Kode diberikan otomatis setelah laporan berhasil dikirim.
+                        </p>
+                    </div>
+                    <div className="sm:col-span-2 space-y-2">
+                        {['Sampaikan', 'Verifikasi', 'Diproses', 'Selesai'].map((label, i) => (
+                            <div key={label} className="flex items-center gap-3">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                                    i <= 1 ? 'bg-crimson text-white' : 'bg-white/10 text-white/40'
+                                }`}>
+                                    {i + 1}
+                                </div>
+                                <div className={`flex-1 h-px ${i <= 1 ? 'bg-crimson/50' : 'bg-white/10'}`} />
+                                <span className={`text-xs ${i <= 1 ? 'text-white' : 'text-white/40'}`}>{label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </GlassCard>
             </section>
+            </Reveal>
 
             {/* Keunggulan */}
+            <Reveal>
             <section id="keunggulan" className="mx-auto max-w-5xl px-6 mb-24 relative">
                 <div className="text-center mb-12">
-                    <SectionKicker label="KEUNGGULAN" />
-                    <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white">
-                        Aman. Mudah. Transparan.
+                    <SectionKicker label="KENAPA SIAP SMEKDA?" />
+                    <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
+                        Menyampaikan Suara Seharusnya Tidak Sulit.
                     </h2>
+                    <p className="text-white/50 max-w-md mx-auto">
+                        SIAP SMEKDA hadir agar setiap warga sekolah bisa menyampaikan laporan dan aspirasi dengan lebih mudah, aman, dan transparan.
+                    </p>
                 </div>
                 <div className="grid sm:grid-cols-3 gap-6">
-                    {features.map((f) => (
-                        <GlassCard key={f.title} className="p-7 text-center">
-                            <div className="mx-auto w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                                <f.icon className="text-white" size={22} />
+                    {features.map((f, i) => (
+                        <GlassCard key={f.title} className="p-7 text-center relative overflow-hidden">
+                            <span className="absolute top-4 right-4 text-4xl font-extrabold text-white/5">
+                                0{i + 1}
+                            </span>
+                            <div className={`mx-auto w-14 h-14 rounded-full bg-gradient-to-br ${f.color} border border-white/10 flex items-center justify-center`}>
+                                <f.icon size={24} />
                             </div>
                             <p className="font-medium text-white mt-4">{f.title}</p>
                             <p className="text-sm text-white/50 mt-1">{f.desc}</p>
@@ -302,54 +395,53 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                     ))}
                 </div>
             </section>
+            </Reveal>
 
             {/* FAQ */}
             {faqs.length > 0 && (
-                <section id="faq" className="mx-auto max-w-2xl px-6 mb-24 relative">
-                    <div className="text-center mb-10">
-                        <SectionKicker label="FAQ" />
-                        <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
-                            Pertanyaan Umum
-                        </h2>
-                        <p className="text-white/50">
-                            Masih ragu? Ini beberapa hal yang paling sering ditanyakan.
-                        </p>
-                    </div>
-                    <div className="space-y-3">
-                        {faqs.map((faq, index) => (
-                            <GlassCard
-                                key={index}
-                                className={`overflow-hidden ${openFaq === index ? '!border-crimson/40' : ''}`}
+                <Reveal>
+                <section id="faq" className="mx-auto max-w-6xl px-6 mb-24 relative">
+                    <div className="grid sm:grid-cols-5 gap-10 items-start">
+                        <div className="sm:col-span-3">
+                            <div className="space-y-3">
+                                {faqs.map((faq, index) => (
+                                    <GlassCard key={index} className={`overflow-hidden ${openFaq === index ? '!border-crimson/40' : ''}`}>
+                                        <button onClick={() => setOpenFaq(openFaq === index ? null : index)} className="w-full flex items-center justify-between px-5 py-4 text-left gap-3">
+                                            <div className="flex items-center gap-3">
+                                                {faq.category && (
+                                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple/20 text-purple flex-shrink-0">
+                                                        {faq.category}
+                                                    </span>
+                                                )}
+                                                <span className="font-medium text-white text-sm">{faq.q}</span>
+                                            </div>
+                                            <ChevronDown size={18} className={`text-white/40 transition-transform flex-shrink-0 ml-2 ${openFaq === index ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        {openFaq === index && (
+                                            <p className="px-5 pb-4 text-sm text-white/50 leading-relaxed">{faq.a}</p>
+                                        )}
+                                    </GlassCard>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="sm:col-span-2 text-left">
+                            <SectionKicker label="FAQ" />
+                            <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
+                                Masih Punya Pertanyaan?
+                            </h2>
+                            <p className="text-white/50 mb-6">
+                                Sebelum kirim laporan, mungkin ada beberapa hal yang perlu kamu tahu.
+                            </p>
+                            <a
+                                href={`mailto:${footer.email}`}
+                                className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-white/20 transition whitespace-nowrap"
                             >
-                                <button
-                                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                                    className="w-full flex items-center justify-between px-5 py-4 text-left"
-                                >
-                                    <span className="font-medium text-white text-sm">
-                                        {faq.q}
-                                    </span>
-                                    <ChevronDown
-                                        size={18}
-                                        className={`text-white/40 transition-transform flex-shrink-0 ml-2 ${
-                                            openFaq === index ? 'rotate-180' : ''
-                                        }`}
-                                    />
-                                </button>
-                                {openFaq === index && (
-                                    <p className="px-5 pb-4 text-sm text-white/50 leading-relaxed">
-                                        {faq.a}
-                                    </p>
-                                )}
-                            </GlassCard>
-                        ))}
-                    </div>
-                    <div className="text-center mt-10">
-                        <p className="text-white/50 text-sm mb-3">Masih ada pertanyaan lain?</p>
-                        <a href={`mailto:${footer.email}`} className="inline-flex items-center gap-2 bg-white/10 border border-white/20 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-white/20 transition">
-                            <Mail size={16} /> Hubungi Admin
-                        </a>
+                                <Mail size={16} /> Hubungi Admin
+                            </a>
+                        </div>
                     </div>
                 </section>
+                </Reveal>
             )}
 
             {/* CTA */}
@@ -362,23 +454,23 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                     <MessageCircle className="text-crimson" size={28} />
                 </div>
                 <h2 className="font-sans font-extrabold text-2xl sm:text-3xl text-white mb-2">
-                    Punya Sesuatu yang Ingin Disampaikan?
+                    Sekolah yang Lebih Baik, Dimulai dari Suara Kita.
                 </h2>
                 <p className="text-white/50 mb-8 max-w-md mx-auto">
-                    Jangan biarkan aspirasimu berhenti sebagai keluhan. Suaramu penting untuk sekolah yang lebih baik.
+                    Punya masalah untuk disampaikan? Ada ide yang ingin diwujudkan? Jangan cuma dipendam — jadilah bagian dari perubahan di sekolah kita.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     <Link
                         href={canLogin ? route('login') : route('register')}
                         className="bg-crimson text-white font-semibold px-6 py-3 rounded-full hover:bg-crimson-dark transition shadow-[0_4px_20px_rgba(255,1,143,0.35)]"
                     >
-                        Sampaikan Aduan
+                        Sampaikan Aspirasi
                     </Link>
                     <Link
                         href={route('track.index')}
                         className="bg-white/10 border border-white/20 text-white font-semibold px-6 py-3 rounded-full hover:bg-white/20 transition"
                     >
-                        Lacak Aduan Saya
+                        Lacak Laporan
                     </Link>
                 </div>
             </GlassCard>
@@ -390,9 +482,8 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                 <div className="grid sm:grid-cols-3 gap-10 mb-12">
                     {/* Brand */}
                     <div>
-                        <div className="flex items-center gap-2 mb-3">
-                            <img src="/images/logo.png" alt="SIAP SMEKDA" className="h-8 w-auto" />
-                            <span className="font-sans font-bold text-white text-lg">SIAP SMEKDA</span>
+                        <div className="flex items-center flex-shrink-0">
+                            <img src="/images/SIAP-SMEKDA.png" alt="SIAP SMEKDA" className="h-20 w-auto" />
                         </div>
                         <p className="text-sm text-white/50 leading-relaxed">
                             Sistem Informasi Aspirasi & Pengaduan — menjembatani suara warga sekolah menuju perubahan nyata.

@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, useForm, router } from '@inertiajs/react';
+import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { ChevronUp, ChevronDown, Pencil, Trash2, Check, X, ListChecks } from 'lucide-react';
+import { Pencil, Power, Trash2, Check, X, Tag, CheckCircle2, AlertCircle } from 'lucide-react';
 
 function SectionCard({ label, dot, description, children }) {
     return (
@@ -31,73 +31,82 @@ function Field({ label, error, children }) {
 const inputClass =
     'block w-full rounded-xl border-navy/10 bg-navy/[0.02] text-sm text-navy placeholder-gray-400 shadow-sm focus:border-crimson focus:ring-crimson/30 transition-colors';
 
-export default function Index({ steps }) {
+export default function Index({ categories }) {
+    const { flash } = usePage().props;
     const [editingId, setEditingId] = useState(null);
 
-    const createForm = useForm({ title: '', description: '' });
-    const editForm = useForm({ title: '', description: '' });
+    const createForm = useForm({ name: '', description: '' });
+    const editForm = useForm({ name: '', description: '', is_active: true });
 
     const submitCreate = (e) => {
         e.preventDefault();
-        createForm.post(route('admin.landing.steps.store'), {
+        createForm.post(route('admin.categories.store'), {
             onSuccess: () => createForm.reset(),
         });
     };
 
-    const startEdit = (step) => {
-        setEditingId(step.id);
-        editForm.setData({ title: step.title, description: step.description });
+    const startEdit = (category) => {
+        setEditingId(category.id);
+        editForm.setData({
+            name: category.name,
+            description: category.description ?? '',
+            is_active: category.is_active,
+        });
     };
 
     const submitEdit = (e, id) => {
         e.preventDefault();
-        editForm.put(route('admin.landing.steps.update', id), {
+        editForm.put(route('admin.categories.update', id), {
             onSuccess: () => setEditingId(null),
         });
     };
 
-    const destroy = (id) => {
-        if (confirm('Yakin mau hapus langkah ini?')) {
-            router.delete(route('admin.landing.steps.destroy', id));
-        }
+    const toggleActive = (category) => {
+        router.patch(route('admin.categories.toggle-active', category.id), {}, { preserveScroll: true });
     };
 
-    const move = (index, direction) => {
-        const newSteps = [...steps];
-        const targetIndex = direction === 'up' ? index - 1 : index + 1;
-        if (targetIndex < 0 || targetIndex >= newSteps.length) return;
-
-        [newSteps[index], newSteps[targetIndex]] = [newSteps[targetIndex], newSteps[index]];
-        router.post(
-            route('admin.landing.steps.reorder'),
-            { ids: newSteps.map((s) => s.id) },
-            { preserveScroll: true }
-        );
+    const destroy = (category) => {
+        if (confirm(`Yakin mau hapus kategori "${category.name}"?`)) {
+            router.delete(route('admin.categories.destroy', category.id), { preserveScroll: true });
+        }
     };
 
     return (
         <AdminLayout
-            title="Cara Kerja"
-            subtitle="Kelola urutan langkah-langkah yang tampil di landing page."
+            title="Kelola Kategori"
+            subtitle="Kelola kategori yang bisa dipilih pengguna saat mengirim aduan."
         >
-            <Head title="Kelola Cara Kerja" />
+            <Head title="Kelola Kategori" />
 
-            <div className="space-y-5 max-w-3xl">
+            <div className="space-y-5 max-w-4xl">
+                {flash?.success && (
+                    <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                        <CheckCircle2 size={16} className="shrink-0" />
+                        {flash.success}
+                    </div>
+                )}
+                {flash?.error && (
+                    <div className="flex items-center gap-2.5 rounded-xl bg-crimson/10 px-4 py-3 text-sm text-crimson">
+                        <AlertCircle size={16} className="shrink-0" />
+                        {flash.error}
+                    </div>
+                )}
+
                 {/* FORM TAMBAH */}
-                <SectionCard label="Tambah Langkah Baru" dot="bg-crimson">
+                <SectionCard label="Tambah Kategori Baru" dot="bg-crimson">
                     <form onSubmit={submitCreate} className="space-y-4">
-                        <Field label="Judul Langkah" error={createForm.errors.title}>
+                        <Field label="Nama Kategori" error={createForm.errors.name}>
                             <input
                                 type="text"
-                                value={createForm.data.title}
-                                onChange={(e) => createForm.setData('title', e.target.value)}
-                                placeholder="Sampaikan"
+                                value={createForm.data.name}
+                                onChange={(e) => createForm.setData('name', e.target.value)}
+                                placeholder="Contoh: Fasilitas Sekolah"
                                 className={inputClass}
                             />
                         </Field>
                         <Field label="Deskripsi" error={createForm.errors.description}>
                             <textarea
-                                rows={3}
+                                rows={2}
                                 value={createForm.data.description}
                                 onChange={(e) => createForm.setData('description', e.target.value)}
                                 className={inputClass}
@@ -108,66 +117,51 @@ export default function Index({ steps }) {
                             disabled={createForm.processing}
                             className="px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors disabled:opacity-50"
                         >
-                            Tambah Langkah
+                            Tambah Kategori
                         </button>
                     </form>
                 </SectionCard>
 
-                {/* DAFTAR LANGKAH */}
-                <SectionCard label="Daftar Langkah" dot="bg-gold">
-                    {steps.length === 0 ? (
+                {/* DAFTAR KATEGORI */}
+                <SectionCard label="Daftar Kategori" dot="bg-purple">
+                    {categories.length === 0 ? (
                         <div className="flex flex-col items-center justify-center text-center py-10">
-                            <ListChecks className="text-gray-200 mb-3" size={30} />
-                            <p className="text-sm text-gray-400">Belum ada langkah. Tambahkan lewat form di atas.</p>
+                            <Tag className="text-gray-200 mb-3" size={30} />
+                            <p className="text-sm text-gray-400">Belum ada kategori.</p>
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            {steps.map((step, index) => (
+                            {categories.map((category) => (
                                 <div
-                                    key={step.id}
+                                    key={category.id}
                                     className="rounded-xl border border-navy/5 p-3 sm:p-4 flex gap-3 hover:border-crimson/20 transition-colors"
                                 >
-                                    {/* NOMOR URUT + TOMBOL REORDER */}
-                                    <div className="flex flex-col items-center gap-1 shrink-0">
-                                        <span className="w-8 h-8 flex items-center justify-center rounded-full bg-gold/20 text-[#8a6d00] text-sm font-bold">
-                                            {String(index + 1).padStart(2, '0')}
-                                        </span>
-                                        <div className="flex flex-col gap-0.5">
-                                            <button
-                                                onClick={() => move(index, 'up')}
-                                                disabled={index === 0}
-                                                className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:bg-navy/5 hover:text-navy disabled:opacity-25 disabled:hover:bg-transparent transition-colors"
-                                                title="Pindah ke atas"
-                                            >
-                                                <ChevronUp size={14} />
-                                            </button>
-                                            <button
-                                                onClick={() => move(index, 'down')}
-                                                disabled={index === steps.length - 1}
-                                                className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:bg-navy/5 hover:text-navy disabled:opacity-25 disabled:hover:bg-transparent transition-colors"
-                                                title="Pindah ke bawah"
-                                            >
-                                                <ChevronDown size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {editingId === step.id ? (
-                                        // MODE EDIT
-                                        <form onSubmit={(e) => submitEdit(e, step.id)} className="flex-1 space-y-3">
-                                            <input
-                                                type="text"
-                                                value={editForm.data.title}
-                                                onChange={(e) => editForm.setData('title', e.target.value)}
-                                                className={inputClass}
-                                            />
+                                    {editingId === category.id ? (
+                                        <form onSubmit={(e) => submitEdit(e, category.id)} className="flex-1 space-y-3">
+                                            <Field error={editForm.errors.name}>
+                                                <input
+                                                    type="text"
+                                                    value={editForm.data.name}
+                                                    onChange={(e) => editForm.setData('name', e.target.value)}
+                                                    className={inputClass}
+                                                />
+                                            </Field>
                                             <textarea
-                                                rows={3}
+                                                rows={2}
                                                 value={editForm.data.description}
                                                 onChange={(e) => editForm.setData('description', e.target.value)}
                                                 className={inputClass}
                                             />
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
+                                                <label className="flex items-center gap-2 text-sm text-navy/60">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={editForm.data.is_active}
+                                                        onChange={(e) => editForm.setData('is_active', e.target.checked)}
+                                                        className="rounded border-navy/20 text-crimson focus:ring-crimson/30"
+                                                    />
+                                                    Aktif
+                                                </label>
                                                 <button
                                                     type="submit"
                                                     disabled={editForm.processing}
@@ -187,22 +181,40 @@ export default function Index({ steps }) {
                                             </div>
                                         </form>
                                     ) : (
-                                        // MODE TAMPIL
                                         <>
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-navy">{step.title}</p>
-                                                <p className="text-sm text-gray-500 mt-1">{step.description}</p>
+                                                <p className="font-semibold text-navy">
+                                                    {category.name}{' '}
+                                                    {!category.is_active && (
+                                                        <span className="ml-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-crimson/10 text-crimson">
+                                                            Nonaktif
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                {category.description && (
+                                                    <p className="text-sm text-gray-500 mt-1">{category.description}</p>
+                                                )}
+                                                <p className="text-xs text-gray-400 mt-1.5">
+                                                    {category.reports_count ?? 0} aduan memakai kategori ini
+                                                </p>
                                             </div>
                                             <div className="flex flex-col gap-1 shrink-0">
                                                 <button
-                                                    onClick={() => startEdit(step)}
+                                                    onClick={() => startEdit(category)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-navy/50 hover:bg-navy/5 hover:text-navy transition-colors"
                                                     title="Edit"
                                                 >
                                                     <Pencil size={15} />
                                                 </button>
                                                 <button
-                                                    onClick={() => destroy(step.id)}
+                                                    onClick={() => toggleActive(category)}
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-[#8a6d00] hover:bg-gold/20 transition-colors"
+                                                    title={category.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                                                >
+                                                    <Power size={15} />
+                                                </button>
+                                                <button
+                                                    onClick={() => destroy(category)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-crimson/60 hover:bg-crimson/10 hover:text-crimson transition-colors"
                                                     title="Hapus"
                                                 >

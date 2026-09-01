@@ -23,6 +23,15 @@ export default {
                 purple: { DEFAULT: '#a78bfa' },
                 mauve: { 100: '#DFB6B2', 300: '#854F6C', 500: '#2a0c62', 700: '#2a0c62', 900: '#11012e' },
             },
+            keyframes: {
+                float: {
+                    '0%, 100%': { transform: 'translate(0, 0)' },
+                    '50%': { transform: 'translate(20px, -30px)' },
+                },
+            },
+            animation: {
+                float: 'float 8s ease-in-out infinite',
+            },
         },
     },
     plugins: [forms],

@@ -13,10 +13,9 @@ class LandingSeeder extends Seeder
     public function run(): void
     {
         // 1. Landing Settings (key-value)
-        // Ganti/tambahkan di dalam array $settings
         $settings = [
-            'hero_title'    => 'Sistem Informasi Aspirasi & Aduan',
-            'hero_subtitle' => 'Sampaikan aduan dan aspirasimu untuk SMK Negeri 1 Daha Selatan menjadi lebih baik. Cepat, transparan, dan bisa dipantau langsung.',
+            'hero_title'    => 'Suarakan Aspirasimu. Wujudkan Perubahan Bersama.',
+            'hero_subtitle' => 'Ada yang perlu diperbaiki? Punya ide untuk sekolah? Sampaikan melalui SIAP SMEKDA — setiap aspirasi dan laporan jadi bagian dari upaya menciptakan lingkungan sekolah yang lebih baik.',
 
             // Footer — kontak
             'footer_copyright' => '© 2026 SIAP SMEKDA — SMK Negeri 1 Daha Selatan.',
@@ -37,10 +36,10 @@ class LandingSeeder extends Seeder
 
         // 2. Landing Stats
         $stats = [
-            ['label' => 'Total Aduan Masuk', 'value' => '1.245', 'order' => 1],
-            ['label' => 'Aduan Terselesaikan', 'value' => '1.180', 'order' => 2],
-            ['label' => 'Tingkat Kepuasan', 'value' => '94%', 'order' => 3],
-            ['label' => 'Rata-rata Respon', 'value' => '< 2 Hari', 'order' => 4],
+            ['label' => 'Laporan Diterima', 'value' => '1.245', 'order' => 1],
+            ['label' => 'Laporan Ditangani', 'value' => '1.180', 'order' => 2],
+            ['label' => 'Warga Merasa Terbantu', 'value' => '94%', 'order' => 3],
+            ['label' => 'Rata-rata Respons', 'value' => '< 2 Hari', 'order' => 4],
         ];
 
         foreach ($stats as $stat) {
@@ -54,22 +53,22 @@ class LandingSeeder extends Seeder
         $steps = [
             [
                 'title'       => 'Sampaikan',
-                'description' => 'Isi form aduan atau aspirasi dengan kategori dan tujuan yang sesuai. Bisa login atau tanpa login.',
+                'description' => 'Ceritakan apa yang ingin kamu laporkan. Isi formulir sesuai masalah atau aspirasi — bisa pakai akun atau anonim.',
                 'order'       => 1,
             ],
             [
-                'title'       => 'Verifikasi',
-                'description' => 'Admin memeriksa dan memverifikasi aduan yang masuk, lalu menentukan prioritas dan tujuan penanganan.',
+                'title'       => 'Kami Periksa',
+                'description' => 'Laporanmu akan diverifikasi dulu, lalu diteruskan ke pihak yang tepat.',
                 'order'       => 2,
             ],
             [
-                'title'       => 'Diproses',
-                'description' => 'Pihak terkait menindaklanjuti aduan sesuai kategorinya, dan progres dapat dipantau secara real-time.',
+                'title'       => 'Dalam Penanganan',
+                'description' => 'Pihak terkait menangani laporan sesuai jenis permasalahan dan kebutuhan di lapangan.',
                 'order'       => 3,
             ],
             [
                 'title'       => 'Selesai',
-                'description' => 'Aduan ditandai selesai, dan pelapor dapat memberi rating serta tanggapan atas penanganan yang dilakukan.',
+                'description' => 'Lihat hasil penyelesaian dan berikan penilaian terhadap layanan.',
                 'order'       => 4,
             ],
         ];
@@ -84,24 +83,29 @@ class LandingSeeder extends Seeder
         // 4. Landing FAQs
         $faqs = [
             [
-                'question' => 'Apakah saya harus login untuk mengirim aduan?',
-                'answer'   => 'Tidak wajib. Kamu bisa mengirim aduan tanpa login, namun dengan login kamu bisa memantau riwayat dan mendapat notifikasi status aduan.',
+                'question' => 'Apakah saya harus login untuk mengirim laporan?',
+                'answer'   => 'Tidak. Kamu dapat mengirim laporan tanpa login. Namun, memiliki akun akan memudahkanmu melihat riwayat laporan dan memantau perkembangannya.',
                 'order'    => 1,
             ],
             [
-                'question' => 'Apakah identitas saya akan dirahasiakan?',
-                'answer'   => 'Ya, jika kamu memilih opsi anonim, identitasmu tidak akan ditampilkan ke pihak manapun kecuali admin untuk keperluan verifikasi internal.',
+                'question' => 'Apakah saya bisa mengirim laporan secara anonim?',
+                'answer'   => 'Bisa. Kamu dapat memilih opsi anonim saat mengirim laporan. Identitas pelapor tidak akan ditampilkan kepada publik.',
                 'order'    => 2,
             ],
             [
-                'question' => 'Berapa lama aduan saya akan ditindaklanjuti?',
-                'answer'   => 'Rata-rata aduan diverifikasi dalam 1x24 jam dan mulai ditindaklanjuti dalam waktu kurang dari 2 hari, tergantung kompleksitas dan kategori aduan.',
+                'question' => 'Kapan laporan saya akan mendapat respons?',
+                'answer'   => 'Laporan akan diverifikasi terlebih dahulu sebelum diteruskan kepada pihak terkait. Rata-rata waktu respons awal adalah kurang dari dua hari kerja.',
                 'order'    => 3,
             ],
             [
-                'question' => 'Bagaimana cara melacak status aduan saya?',
-                'answer'   => 'Gunakan fitur "Lacak Aduan" di halaman utama dengan memasukkan kode aduan yang diberikan setelah pengiriman, misalnya ADU-2026-00125.',
+                'question' => 'Bagaimana cara melacak laporan saya?',
+                'answer'   => 'Setiap laporan memiliki kode unik. Masukkan kode tersebut pada fitur Lacak Laporan untuk melihat perkembangan laporanmu.',
                 'order'    => 4,
+            ],
+            [
+                'question' => 'Apakah semua laporan akan langsung diselesaikan?',
+                'answer'   => 'Setiap laporan akan melalui proses verifikasi dan penanganan sesuai dengan jenis permasalahannya. Status laporan akan diperbarui selama proses berlangsung.',
+                'order'    => 5,
             ],
         ];
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\BannedWord;
+use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreReportRequest extends FormRequest
@@ -35,5 +37,28 @@ class StoreReportRequest extends FormRequest
             'attachments.*.mimes' => 'Lampiran harus berupa gambar (jpg, png) atau video (mp4, mov).',
             'attachments.*.max' => 'Ukuran lampiran maksimal 10MB.',
         ];
+    }
+
+    /**
+     * Tolak aduan yang judul/isinya mengandung kata terlarang yang
+     * diatur admin lewat menu Kelola Kata Terlarang.
+     */
+    public function withValidator(ValidatorContract $validator): void
+    {
+        $validator->after(function (ValidatorContract $validator) {
+            $text = mb_strtolower($this->input('title') . ' ' . $this->input('description'));
+
+            $bannedWords = BannedWord::where('is_active', true)->pluck('word');
+
+            foreach ($bannedWords as $word) {
+                if ($word !== '' && str_contains($text, mb_strtolower($word))) {
+                    $validator->errors()->add(
+                        'description',
+                        'Aduan mengandung kata yang tidak diperbolehkan. Mohon gunakan bahasa yang sopan.'
+                    );
+                    break;
+                }
+            }
+        });
     }
 }

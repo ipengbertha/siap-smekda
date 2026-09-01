@@ -1,0 +1,2576 @@
+diff --git a/app/Http/Controllers/Admin/BannedWordController.php b/app/Http/Controllers/Admin/BannedWordController.php
+new file mode 100644
+index 0000000..314acc9
+--- /dev/null
++++ b/app/Http/Controllers/Admin/BannedWordController.php
+@@ -0,0 +1,61 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\BannedWord;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class BannedWordController extends Controller
++{
++    public function index(): Response
++    {
++        return Inertia::render('Admin/BannedWords/Index', [
++            'bannedWords' => BannedWord::orderBy('word')->get(),
++        ]);
++    }
++
++    public function store(Request $request): RedirectResponse
++    {
++        $validated = $request->validate([
++            'word' => ['required', 'string', 'max:255', 'unique:banned_words,word'],
++        ]);
++
++        $validated['is_active'] = true;
++
++        BannedWord::create($validated);
++
++        return redirect()->back()->with('success', 'Kata terlarang berhasil ditambahkan.');
++    }
++
++    public function update(Request $request, BannedWord $bannedWord): RedirectResponse
++    {
++        $validated = $request->validate([
++            'word' => ['required', 'string', 'max:255', 'unique:banned_words,word,' . $bannedWord->id],
++            'is_active' => ['boolean'],
++        ]);
++
++        $bannedWord->update($validated);
++
++        return redirect()->back()->with('success', 'Kata terlarang berhasil diperbarui.');
++    }
++
++    public function toggleActive(BannedWord $bannedWord): RedirectResponse
++    {
++        $bannedWord->update(['is_active' => ! $bannedWord->is_active]);
++
++        return redirect()->back()->with('success', $bannedWord->is_active
++            ? 'Kata terlarang diaktifkan kembali.'
++            : 'Kata terlarang dinonaktifkan.');
++    }
++
++    public function destroy(BannedWord $bannedWord): RedirectResponse
++    {
++        $bannedWord->delete();
++
++        return redirect()->back()->with('success', 'Kata terlarang berhasil dihapus.');
++    }
++}
+diff --git a/app/Http/Controllers/Admin/CategoryController.php b/app/Http/Controllers/Admin/CategoryController.php
+new file mode 100644
+index 0000000..873cf45
+--- /dev/null
++++ b/app/Http/Controllers/Admin/CategoryController.php
+@@ -0,0 +1,91 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\Category;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Str;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class CategoryController extends Controller
++{
++    public function index(): Response
++    {
++        return Inertia::render('Admin/Categories/Index', [
++            'categories' => Category::withCount('reports')->orderBy('name')->get(),
++        ]);
++    }
++
++    public function store(Request $request): RedirectResponse
++    {
++        $validated = $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'description' => ['nullable', 'string', 'max:1000'],
++        ]);
++
++        $validated['slug'] = $this->uniqueSlug($validated['name']);
++        $validated['is_active'] = true;
++
++        Category::create($validated);
++
++        return redirect()->back()->with('success', 'Kategori berhasil ditambahkan.');
++    }
++
++    public function update(Request $request, Category $category): RedirectResponse
++    {
++        $validated = $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'description' => ['nullable', 'string', 'max:1000'],
++            'is_active' => ['boolean'],
++        ]);
++
++        if ($validated['name'] !== $category->name) {
++            $validated['slug'] = $this->uniqueSlug($validated['name'], $category->id);
++        }
++
++        $category->update($validated);
++
++        return redirect()->back()->with('success', 'Kategori berhasil diperbarui.');
++    }
++
++    public function toggleActive(Category $category): RedirectResponse
++    {
++        $category->update(['is_active' => ! $category->is_active]);
++
++        return redirect()->back()->with('success', $category->is_active
++            ? 'Kategori diaktifkan kembali.'
++            : 'Kategori dinonaktifkan.');
++    }
++
++    public function destroy(Category $category): RedirectResponse
++    {
++        if ($category->reports()->exists()) {
++            return redirect()->back()->with('error', 'Kategori tidak bisa dihapus karena masih dipakai oleh aduan. Nonaktifkan saja kategori ini.');
++        }
++
++        $category->delete();
++
++        return redirect()->back()->with('success', 'Kategori berhasil dihapus.');
++    }
++
++    private function uniqueSlug(string $name, ?int $ignoreId = null): string
++    {
++        $slug = Str::slug($name);
++        $original = $slug;
++        $i = 1;
++
++        while (
++            Category::where('slug', $slug)
++                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
++                ->exists()
++        ) {
++            $slug = "{$original}-{$i}";
++            $i++;
++        }
++
++        return $slug;
++    }
++}
+diff --git a/app/Http/Controllers/Admin/DestinationController.php b/app/Http/Controllers/Admin/DestinationController.php
+new file mode 100644
+index 0000000..38aedcb
+--- /dev/null
++++ b/app/Http/Controllers/Admin/DestinationController.php
+@@ -0,0 +1,67 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\Destination;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class DestinationController extends Controller
++{
++    public function index(): Response
++    {
++        return Inertia::render('Admin/Destinations/Index', [
++            'destinations' => Destination::withCount('reports')->orderBy('name')->get(),
++        ]);
++    }
++
++    public function store(Request $request): RedirectResponse
++    {
++        $validated = $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'description' => ['nullable', 'string', 'max:1000'],
++        ]);
++
++        $validated['is_active'] = true;
++
++        Destination::create($validated);
++
++        return redirect()->back()->with('success', 'Tujuan berhasil ditambahkan.');
++    }
++
++    public function update(Request $request, Destination $destination): RedirectResponse
++    {
++        $validated = $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'description' => ['nullable', 'string', 'max:1000'],
++            'is_active' => ['boolean'],
++        ]);
++
++        $destination->update($validated);
++
++        return redirect()->back()->with('success', 'Tujuan berhasil diperbarui.');
++    }
++
++    public function toggleActive(Destination $destination): RedirectResponse
++    {
++        $destination->update(['is_active' => ! $destination->is_active]);
++
++        return redirect()->back()->with('success', $destination->is_active
++            ? 'Tujuan diaktifkan kembali.'
++            : 'Tujuan dinonaktifkan.');
++    }
++
++    public function destroy(Destination $destination): RedirectResponse
++    {
++        if ($destination->reports()->exists()) {
++            return redirect()->back()->with('error', 'Tujuan tidak bisa dihapus karena masih dipakai oleh aduan. Nonaktifkan saja tujuan ini.');
++        }
++
++        $destination->delete();
++
++        return redirect()->back()->with('success', 'Tujuan berhasil dihapus.');
++    }
++}
+diff --git a/app/Http/Controllers/Admin/ReportController.php b/app/Http/Controllers/Admin/ReportController.php
+new file mode 100644
+index 0000000..7657c8a
+--- /dev/null
++++ b/app/Http/Controllers/Admin/ReportController.php
+@@ -0,0 +1,97 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\Category;
++use App\Models\Destination;
++use App\Models\Report;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class ReportController extends Controller
++{
++    public const STATUSES = [
++        'terkirim',
++        'diterima',
++        'diproses',
++        'ditanggapi',
++        'selesai',
++        'ditolak',
++        'diblokir',
++    ];
++
++    public function index(Request $request): Response
++    {
++        $reports = Report::query()
++            ->with(['category:id,name', 'destination:id,name', 'user:id,name'])
++            ->withCount('responses')
++            ->when($request->status, fn ($q) => $q->where('status', $request->status))
++            ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id))
++            ->when($request->search, function ($q) use ($request) {
++                $q->where(function ($sub) use ($request) {
++                    $sub->where('code', 'like', "%{$request->search}%")
++                        ->orWhere('title', 'like', "%{$request->search}%");
++                });
++            })
++            ->latest()
++            ->paginate(15)
++            ->withQueryString();
++
++        return Inertia::render('Admin/Reports/Index', [
++            'reports' => $reports,
++            'categories' => Category::orderBy('name')->get(['id', 'name']),
++            'statuses' => self::STATUSES,
++            'filters' => $request->only(['status', 'category_id', 'search']),
++        ]);
++    }
++
++    public function show(Report $report): Response
++    {
++        $report->load([
++            'category:id,name',
++            'destination:id,name',
++            'user:id,name,email',
++            'attachments',
++            'statusHistories.changedBy:id,name',
++            'responses.user:id,name',
++        ]);
++
++        return Inertia::render('Admin/Reports/Show', [
++            'report' => $report,
++            'destinations' => Destination::where('is_active', true)->orderBy('name')->get(['id', 'name']),
++            'statuses' => self::STATUSES,
++        ]);
++    }
++
++    public function updateStatus(Request $request, Report $report): RedirectResponse
++    {
++        $validated = $request->validate([
++            'status' => ['required', 'in:' . implode(',', self::STATUSES)],
++            'note' => ['nullable', 'string', 'max:1000'],
++            'destination_id' => ['nullable', 'exists:destinations,id'],
++        ]);
++
++        $report->update([
++            'status' => $validated['status'],
++            'destination_id' => $validated['destination_id'] ?? $report->destination_id,
++        ]);
++
++        $report->statusHistories()->create([
++            'status' => $validated['status'],
++            'note' => $validated['note'] ?? null,
++            'changed_by' => $request->user()->id,
++        ]);
++
++        return redirect()->back()->with('success', 'Status aduan berhasil diperbarui.');
++    }
++
++    public function destroy(Report $report): RedirectResponse
++    {
++        $report->delete();
++
++        return redirect()->route('admin.reports.index')->with('success', 'Aduan berhasil dihapus.');
++    }
++}
+diff --git a/app/Http/Controllers/Admin/ReportResponseController.php b/app/Http/Controllers/Admin/ReportResponseController.php
+new file mode 100644
+index 0000000..0479b6e
+--- /dev/null
++++ b/app/Http/Controllers/Admin/ReportResponseController.php
+@@ -0,0 +1,75 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\Report;
++use App\Models\ReportResponse;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class ReportResponseController extends Controller
++{
++    public function index(Request $request): Response
++    {
++        $responses = ReportResponse::query()
++            ->with(['report:id,code,title,status', 'user:id,name'])
++            ->when($request->search, function ($q) use ($request) {
++                $q->where('message', 'like', "%{$request->search}%")
++                    ->orWhereHas('report', fn ($sub) => $sub->where('code', 'like', "%{$request->search}%"));
++            })
++            ->latest()
++            ->paginate(15)
++            ->withQueryString();
++
++        return Inertia::render('Admin/Responses/Index', [
++            'responses' => $responses,
++            'filters' => $request->only(['search']),
++        ]);
++    }
++
++    public function store(Request $request, Report $report): RedirectResponse
++    {
++        $validated = $request->validate([
++            'message' => ['required', 'string', 'min:3', 'max:2000'],
++        ]);
++
++        $report->responses()->create([
++            'user_id' => $request->user()->id,
++            'message' => $validated['message'],
++            'is_admin' => true,
++        ]);
++
++        if (! in_array($report->status, ['selesai', 'ditolak', 'diblokir'], true)) {
++            $report->update(['status' => 'ditanggapi']);
++
++            $report->statusHistories()->create([
++                'status' => 'ditanggapi',
++                'note' => 'Admin memberikan tanggapan.',
++                'changed_by' => $request->user()->id,
++            ]);
++        }
++
++        return redirect()->back()->with('success', 'Tanggapan berhasil dikirim.');
++    }
++
++    public function update(Request $request, ReportResponse $response): RedirectResponse
++    {
++        $validated = $request->validate([
++            'message' => ['required', 'string', 'min:3', 'max:2000'],
++        ]);
++
++        $response->update($validated);
++
++        return redirect()->back()->with('success', 'Tanggapan berhasil diperbarui.');
++    }
++
++    public function destroy(ReportResponse $response): RedirectResponse
++    {
++        $response->delete();
++
++        return redirect()->back()->with('success', 'Tanggapan berhasil dihapus.');
++    }
++}
+diff --git a/app/Http/Controllers/Admin/UserController.php b/app/Http/Controllers/Admin/UserController.php
+new file mode 100644
+index 0000000..eeccf26
+--- /dev/null
++++ b/app/Http/Controllers/Admin/UserController.php
+@@ -0,0 +1,92 @@
++<?php
++
++namespace App\Http\Controllers\Admin;
++
++use App\Http\Controllers\Controller;
++use App\Models\User;
++use Illuminate\Http\RedirectResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Hash;
++use Illuminate\Validation\Rules\Password;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class UserController extends Controller
++{
++    public function index(): Response
++    {
++        return Inertia::render('Admin/Users/Index', [
++            'users' => User::withCount('reports')->orderBy('name')->get(),
++        ]);
++    }
++
++    public function store(Request $request): RedirectResponse
++    {
++        $validated = $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
++            'password' => ['required', 'confirmed', Password::defaults()],
++            'role' => ['required', 'in:admin,user'],
++        ]);
++
++        User::create([
++            'name' => $validated['name'],
++            'email' => $validated['email'],
++            'password' => Hash::make($validated['password']),
++            'role' => $validated['role'],
++            'status' => 'active',
++            'email_verified_at' => now(),
++        ]);
++
++        return redirect()->back()->with('success', 'User berhasil ditambahkan.');
++    }
++
++    public function update(Request $request, User $user): RedirectResponse
++    {
++        $validated = $request->validate([
++            'name' => ['required', 'string', 'max:255'],
++            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
++            'role' => ['required', 'in:admin,user'],
++        ]);
++
++        if ($user->id === $request->user()->id && $validated['role'] !== 'admin') {
++            return redirect()->back()->with('error', 'Kamu tidak bisa mencabut hak admin dari akun sendiri.');
++        }
++
++        $user->update($validated);
++
++        return redirect()->back()->with('success', 'User berhasil diperbarui.');
++    }
++
++    public function updateStatus(Request $request, User $user): RedirectResponse
++    {
++        $validated = $request->validate([
++            'status' => ['required', 'in:active,inactive,blocked'],
++        ]);
++
++        if ($user->id === $request->user()->id) {
++            return redirect()->back()->with('error', 'Kamu tidak bisa mengubah status akun sendiri.');
++        }
++
++        $user->update(['status' => $validated['status']]);
++
++        $label = match ($validated['status']) {
++            'active' => 'diaktifkan',
++            'inactive' => 'dinonaktifkan',
++            'blocked' => 'diblokir',
++        };
++
++        return redirect()->back()->with('success', "User berhasil {$label}.");
++    }
++
++    public function destroy(Request $request, User $user): RedirectResponse
++    {
++        if ($user->id === $request->user()->id) {
++            return redirect()->back()->with('error', 'Kamu tidak bisa menghapus akun sendiri.');
++        }
++
++        $user->delete();
++
++        return redirect()->back()->with('success', 'User berhasil dihapus.');
++    }
++}
+diff --git a/app/Http/Controllers/TrackController.php b/app/Http/Controllers/TrackController.php
+index c5f854e..0d6412b 100644
+--- a/app/Http/Controllers/TrackController.php
++++ b/app/Http/Controllers/TrackController.php
+@@ -23,6 +23,7 @@ public function show(string $code): Response
+                 'rating',
+             ])
+             ->where('code', $code)
++            ->where('status', '!=', 'diblokir')
+             ->firstOrFail();
+ 
+         return Inertia::render('Track/Show', [
+diff --git a/app/Http/Middleware/EnsureUserIsActive.php b/app/Http/Middleware/EnsureUserIsActive.php
+new file mode 100644
+index 0000000..ce2bb02
+--- /dev/null
++++ b/app/Http/Middleware/EnsureUserIsActive.php
+@@ -0,0 +1,34 @@
++<?php
++
++namespace App\Http\Middleware;
++
++use Closure;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Auth;
++use Symfony\Component\HttpFoundation\Response;
++
++class EnsureUserIsActive
++{
++    /**
++     * Auto-logout user yang statusnya diubah admin (nonaktif/blokir)
++     * ketika sesi login mereka masih berjalan.
++     */
++    public function handle(Request $request, Closure $next): Response
++    {
++        $user = $request->user();
++
++        if ($user && $user->status !== 'active') {
++            $message = $user->status === 'blocked'
++                ? 'Akun kamu telah diblokir oleh admin.'
++                : 'Akun kamu telah dinonaktifkan oleh admin.';
++
++            Auth::guard('web')->logout();
++            $request->session()->invalidate();
++            $request->session()->regenerateToken();
++
++            return redirect()->route('login')->with('status', $message);
++        }
++
++        return $next($request);
++    }
++}
+diff --git a/app/Http/Requests/Auth/LoginRequest.php b/app/Http/Requests/Auth/LoginRequest.php
+index 711e0a1..488427c 100644
+--- a/app/Http/Requests/Auth/LoginRequest.php
++++ b/app/Http/Requests/Auth/LoginRequest.php
+@@ -50,6 +50,21 @@ public function authenticate(): void
+             ]);
+         }
+ 
++        $user = Auth::user();
++
++        if ($user->status !== 'active') {
++            Auth::logout();
++            RateLimiter::hit($this->throttleKey());
++
++            $message = $user->status === 'blocked'
++                ? 'Akun kamu telah diblokir oleh admin.'
++                : 'Akun kamu telah dinonaktifkan oleh admin.';
++
++            throw ValidationException::withMessages([
++                'email' => $message,
++            ]);
++        }
++
+         RateLimiter::clear($this->throttleKey());
+     }
+ 
+diff --git a/app/Http/Requests/StoreReportRequest.php b/app/Http/Requests/StoreReportRequest.php
+index 2d0f981..72a6dd7 100644
+--- a/app/Http/Requests/StoreReportRequest.php
++++ b/app/Http/Requests/StoreReportRequest.php
+@@ -2,6 +2,8 @@
+ 
+ namespace App\Http\Requests;
+ 
++use App\Models\BannedWord;
++use Illuminate\Contracts\Validation\Validator as ValidatorContract;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+ class StoreReportRequest extends FormRequest
+@@ -36,4 +38,27 @@ public function messages(): array
+             'attachments.*.max' => 'Ukuran lampiran maksimal 10MB.',
+         ];
+     }
++
++    /**
++     * Tolak aduan yang judul/isinya mengandung kata terlarang yang
++     * diatur admin lewat menu Kelola Kata Terlarang.
++     */
++    public function withValidator(ValidatorContract $validator): void
++    {
++        $validator->after(function (ValidatorContract $validator) {
++            $text = mb_strtolower($this->input('title') . ' ' . $this->input('description'));
++
++            $bannedWords = BannedWord::where('is_active', true)->pluck('word');
++
++            foreach ($bannedWords as $word) {
++                if ($word !== '' && str_contains($text, mb_strtolower($word))) {
++                    $validator->errors()->add(
++                        'description',
++                        'Aduan mengandung kata yang tidak diperbolehkan. Mohon gunakan bahasa yang sopan.'
++                    );
++                    break;
++                }
++            }
++        });
++    }
+ }
+\ No newline at end of file
+diff --git a/app/Models/BannedWord.php b/app/Models/BannedWord.php
+new file mode 100644
+index 0000000..85d9867
+--- /dev/null
++++ b/app/Models/BannedWord.php
+@@ -0,0 +1,20 @@
++<?php
++
++namespace App\Models;
++
++use Illuminate\Database\Eloquent\Factories\HasFactory;
++use Illuminate\Database\Eloquent\Model;
++
++class BannedWord extends Model
++{
++    use HasFactory;
++
++    protected $fillable = [
++        'word',
++        'is_active',
++    ];
++
++    protected $casts = [
++        'is_active' => 'boolean',
++    ];
++}
+diff --git a/app/Models/User.php b/app/Models/User.php
+index 43c410a..8810dca 100644
+--- a/app/Models/User.php
++++ b/app/Models/User.php
+@@ -5,6 +5,7 @@
+ // use Illuminate\Contracts\Auth\MustVerifyEmail;
+ use Database\Factories\UserFactory;
+ use Illuminate\Database\Eloquent\Factories\HasFactory;
++use Illuminate\Database\Eloquent\Relations\HasMany;
+ use Illuminate\Foundation\Auth\User as Authenticatable;
+ use Illuminate\Notifications\Notifiable;
+ 
+@@ -22,6 +23,8 @@ class User extends Authenticatable
+         'name',
+         'email',
+         'password',
++        'role',
++        'status',
+     ];
+ 
+     /**
+@@ -46,9 +49,29 @@ protected function casts(): array
+             'password' => 'hashed',
+         ];
+     }
+-    
+-public function reports(): HasMany
++
++    public function reports(): HasMany
+     {
+         return $this->hasMany(Report::class);
+     }
++
++    public function reportResponses(): HasMany
++    {
++        return $this->hasMany(ReportResponse::class);
++    }
++
++    public function isAdmin(): bool
++    {
++        return $this->role === 'admin';
++    }
++
++    public function isActive(): bool
++    {
++        return $this->status === 'active';
++    }
++
++    public function isBlocked(): bool
++    {
++        return $this->status === 'blocked';
++    }
+ }
+diff --git a/bootstrap/app.php b/bootstrap/app.php
+index a912020..d5fa78c 100644
+--- a/bootstrap/app.php
++++ b/bootstrap/app.php
+@@ -1,6 +1,7 @@
+ <?php
+ 
+ use App\Http\Middleware\EnsureUserIsAdmin;
++use App\Http\Middleware\EnsureUserIsActive;
+ use App\Http\Middleware\HandleInertiaRequests;
+ use Illuminate\Foundation\Application;
+ use Illuminate\Foundation\Configuration\Exceptions;
+@@ -17,6 +18,7 @@
+         $middleware->web(append: [
+             HandleInertiaRequests::class,
+             AddLinkHeadersForPreloadedAssets::class,
++            EnsureUserIsActive::class,
+         ]);
+ 
+         $middleware->alias([
+diff --git a/database/migrations/2026_08_31_000001_add_status_to_users_table.php b/database/migrations/2026_08_31_000001_add_status_to_users_table.php
+new file mode 100644
+index 0000000..1329739
+--- /dev/null
++++ b/database/migrations/2026_08_31_000001_add_status_to_users_table.php
+@@ -0,0 +1,22 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('users', function (Blueprint $table) {
++            $table->string('status')->default('active')->after('role'); // active | inactive | blocked
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('users', function (Blueprint $table) {
++            $table->dropColumn('status');
++        });
++    }
++};
+diff --git a/database/migrations/2026_08_31_000002_create_banned_words_table.php b/database/migrations/2026_08_31_000002_create_banned_words_table.php
+new file mode 100644
+index 0000000..8bc2329
+--- /dev/null
++++ b/database/migrations/2026_08_31_000002_create_banned_words_table.php
+@@ -0,0 +1,23 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('banned_words', function (Blueprint $table) {
++            $table->id();
++            $table->string('word')->unique();
++            $table->boolean('is_active')->default(true);
++            $table->timestamps();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('banned_words');
++    }
++};
+diff --git a/database/migrations/2026_08_31_000003_change_status_column_on_reports_table.php b/database/migrations/2026_08_31_000003_change_status_column_on_reports_table.php
+new file mode 100644
+index 0000000..618b126
+--- /dev/null
++++ b/database/migrations/2026_08_31_000003_change_status_column_on_reports_table.php
+@@ -0,0 +1,42 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    /**
++     * Ubah kolom status dari enum tetap menjadi string bebas supaya bisa
++     * menampung status baru (diterima, ditanggapi, diblokir) tanpa perlu
++     * migration ulang tiap kali admin butuh status baru.
++     */
++    public function up(): void
++    {
++        Schema::table('reports', function (Blueprint $table) {
++            $table->dropColumn('status');
++        });
++
++        Schema::table('reports', function (Blueprint $table) {
++            $table->string('status')->default('terkirim')->after('description');
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('reports', function (Blueprint $table) {
++            $table->dropColumn('status');
++        });
++
++        Schema::table('reports', function (Blueprint $table) {
++            $table->enum('status', [
++                'terkirim',
++                'diverifikasi',
++                'diproses',
++                'ditindaklanjuti',
++                'selesai',
++                'ditolak',
++            ])->default('terkirim')->after('description');
++        });
++    }
++};
+diff --git a/resources/js/Layouts/AuthenticatedLayout.jsx b/resources/js/Layouts/AuthenticatedLayout.jsx
+index 9e1230c..d4e4e4d 100644
+--- a/resources/js/Layouts/AuthenticatedLayout.jsx
++++ b/resources/js/Layouts/AuthenticatedLayout.jsx
+@@ -82,6 +82,68 @@ export default function AuthenticatedLayout({ header, children }) {
+                                         </Dropdown>
+                                     </div>
+                                 )}
++
++                                {/* MENU KELOLA — cuma tampil kalau role admin */}
++                                {isAdmin && (
++                                    <div className="relative flex items-center">
++                                        <Dropdown>
++                                            <Dropdown.Trigger>
++                                                <span className="inline-flex rounded-md">
++                                                    <button
++                                                        type="button"
++                                                        className={
++                                                            (route().current('admin.reports.*') ||
++                                                            route().current('admin.responses.*') ||
++                                                            route().current('admin.categories.*') ||
++                                                            route().current('admin.destinations.*') ||
++                                                            route().current('admin.banned-words.*') ||
++                                                            route().current('admin.users.*')
++                                                                ? 'border-indigo-400 text-gray-900'
++                                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700') +
++                                                            ' inline-flex items-center border-b-2 px-1 pt-1 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none'
++                                                        }
++                                                    >
++                                                        Kelola
++
++                                                        <svg
++                                                            className="-me-0.5 ms-1.5 h-4 w-4"
++                                                            xmlns="http://www.w3.org/2000/svg"
++                                                            viewBox="0 0 20 20"
++                                                            fill="currentColor"
++                                                        >
++                                                            <path
++                                                                fillRule="evenodd"
++                                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
++                                                                clipRule="evenodd"
++                                                            />
++                                                        </svg>
++                                                    </button>
++                                                </span>
++                                            </Dropdown.Trigger>
++
++                                            <Dropdown.Content>
++                                                <Dropdown.Link href={route('admin.reports.index')}>
++                                                    Kelola Aduan
++                                                </Dropdown.Link>
++                                                <Dropdown.Link href={route('admin.responses.index')}>
++                                                    Kelola Tanggapan
++                                                </Dropdown.Link>
++                                                <Dropdown.Link href={route('admin.categories.index')}>
++                                                    Kelola Kategori
++                                                </Dropdown.Link>
++                                                <Dropdown.Link href={route('admin.destinations.index')}>
++                                                    Kelola Tujuan
++                                                </Dropdown.Link>
++                                                <Dropdown.Link href={route('admin.banned-words.index')}>
++                                                    Kata Terlarang
++                                                </Dropdown.Link>
++                                                <Dropdown.Link href={route('admin.users.index')}>
++                                                    Kelola User
++                                                </Dropdown.Link>
++                                            </Dropdown.Content>
++                                        </Dropdown>
++                                    </div>
++                                )}
+                             </div>
+                         </div>
+ 
+@@ -217,6 +279,46 @@ export default function AuthenticatedLayout({ header, children }) {
+                                 >
+                                     Cara Kerja
+                                 </ResponsiveNavLink>
++
++                                <div className="px-4 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
++                                    Kelola
++                                </div>
++                                <ResponsiveNavLink
++                                    href={route('admin.reports.index')}
++                                    active={route().current('admin.reports.*')}
++                                >
++                                    Kelola Aduan
++                                </ResponsiveNavLink>
++                                <ResponsiveNavLink
++                                    href={route('admin.responses.index')}
++                                    active={route().current('admin.responses.*')}
++                                >
++                                    Kelola Tanggapan
++                                </ResponsiveNavLink>
++                                <ResponsiveNavLink
++                                    href={route('admin.categories.index')}
++                                    active={route().current('admin.categories.*')}
++                                >
++                                    Kelola Kategori
++                                </ResponsiveNavLink>
++                                <ResponsiveNavLink
++                                    href={route('admin.destinations.index')}
++                                    active={route().current('admin.destinations.*')}
++                                >
++                                    Kelola Tujuan
++                                </ResponsiveNavLink>
++                                <ResponsiveNavLink
++                                    href={route('admin.banned-words.index')}
++                                    active={route().current('admin.banned-words.*')}
++                                >
++                                    Kata Terlarang
++                                </ResponsiveNavLink>
++                                <ResponsiveNavLink
++                                    href={route('admin.users.index')}
++                                    active={route().current('admin.users.*')}
++                                >
++                                    Kelola User
++                                </ResponsiveNavLink>
+                             </>
+                         )}
+                     </div>
+diff --git a/resources/js/Pages/Admin/BannedWords/Index.jsx b/resources/js/Pages/Admin/BannedWords/Index.jsx
+new file mode 100644
+index 0000000..4f04de5
+--- /dev/null
++++ b/resources/js/Pages/Admin/BannedWords/Index.jsx
+@@ -0,0 +1,155 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import { Head, useForm, router, usePage } from '@inertiajs/react';
++import { useState } from 'react';
++
++export default function Index({ bannedWords }) {
++    const { flash } = usePage().props;
++    const [editingId, setEditingId] = useState(null);
++
++    const createForm = useForm({ word: '' });
++    const editForm = useForm({ word: '', is_active: true });
++
++    const inputClass =
++        'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm';
++
++    const submitCreate = (e) => {
++        e.preventDefault();
++        createForm.post(route('admin.banned-words.store'), {
++            onSuccess: () => createForm.reset(),
++        });
++    };
++
++    const startEdit = (bannedWord) => {
++        setEditingId(bannedWord.id);
++        editForm.setData({ word: bannedWord.word, is_active: bannedWord.is_active });
++    };
++
++    const submitEdit = (e, id) => {
++        e.preventDefault();
++        editForm.put(route('admin.banned-words.update', id), {
++            onSuccess: () => setEditingId(null),
++        });
++    };
++
++    const toggleActive = (bannedWord) => {
++        router.patch(route('admin.banned-words.toggle-active', bannedWord.id), {}, { preserveScroll: true });
++    };
++
++    const destroy = (bannedWord) => {
++        if (confirm(`Yakin mau hapus kata "${bannedWord.word}"?`)) {
++            router.delete(route('admin.banned-words.destroy', bannedWord.id), { preserveScroll: true });
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={<h2 className="text-xl font-semibold text-gray-800">Kelola Kata Terlarang</h2>}
++        >
++            <Head title="Kelola Kata Terlarang" />
++
++            <div className="py-6">
++                <div className="max-w-2xl mx-auto sm:px-6 lg:px-8 space-y-6">
++                    {flash?.success && (
++                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
++                    )}
++                    {flash?.error && (
++                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>
++                    )}
++
++                    <p className="text-sm text-gray-500">
++                        Aduan/aspirasi yang judul atau isinya mengandung salah satu kata di bawah ini (dan
++                        berstatus aktif) akan otomatis ditolak sistem saat dikirim pengguna.
++                    </p>
++
++                    <div className="bg-white p-6 shadow sm:rounded-lg">
++                        <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Kata Terlarang</h3>
++                        <form onSubmit={submitCreate} className="flex gap-3">
++                            <input
++                                type="text"
++                                value={createForm.data.word}
++                                onChange={(e) => createForm.setData('word', e.target.value)}
++                                placeholder="Contoh: anjing"
++                                className={inputClass}
++                            />
++                            <button
++                                type="submit"
++                                disabled={createForm.processing}
++                                className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap"
++                            >
++                                Tambah
++                            </button>
++                        </form>
++                        {createForm.errors.word && (
++                            <p className="mt-1 text-sm text-red-600">{createForm.errors.word}</p>
++                        )}
++                    </div>
++
++                    <div className="bg-white shadow sm:rounded-lg divide-y">
++                        {bannedWords.length === 0 && (
++                            <p className="p-6 text-sm text-gray-500">Belum ada kata terlarang.</p>
++                        )}
++
++                        {bannedWords.map((bannedWord) => (
++                            <div key={bannedWord.id} className="p-4 flex items-center gap-3">
++                                {editingId === bannedWord.id ? (
++                                    <form
++                                        onSubmit={(e) => submitEdit(e, bannedWord.id)}
++                                        className="flex-1 flex items-center gap-3"
++                                    >
++                                        <input
++                                            type="text"
++                                            value={editForm.data.word}
++                                            onChange={(e) => editForm.setData('word', e.target.value)}
++                                            className={inputClass}
++                                        />
++                                        <button
++                                            type="submit"
++                                            disabled={editForm.processing}
++                                            className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
++                                        >
++                                            Simpan
++                                        </button>
++                                        <button
++                                            type="button"
++                                            onClick={() => setEditingId(null)}
++                                            className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200"
++                                        >
++                                            Batal
++                                        </button>
++                                    </form>
++                                ) : (
++                                    <>
++                                        <div className="flex-1">
++                                            <span className="font-medium text-gray-900">{bannedWord.word}</span>{' '}
++                                            {!bannedWord.is_active && (
++                                                <span className="text-xs font-normal text-red-500">(nonaktif)</span>
++                                            )}
++                                        </div>
++                                        <button
++                                            onClick={() => startEdit(bannedWord)}
++                                            className="px-3 py-1.5 text-sm text-indigo-600 hover:text-indigo-800"
++                                        >
++                                            Edit
++                                        </button>
++                                        <button
++                                            onClick={() => toggleActive(bannedWord)}
++                                            className="px-3 py-1.5 text-sm text-yellow-600 hover:text-yellow-800"
++                                        >
++                                            {bannedWord.is_active ? 'Nonaktifkan' : 'Aktifkan'}
++                                        </button>
++                                        <button
++                                            onClick={() => destroy(bannedWord)}
++                                            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-800"
++                                        >
++                                            Hapus
++                                        </button>
++                                    </>
++                                )}
++                            </div>
++                        ))}
++                    </div>
++                </div>
++            </div>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Admin/Categories/Index.jsx b/resources/js/Pages/Admin/Categories/Index.jsx
+new file mode 100644
+index 0000000..cea2af6
+--- /dev/null
++++ b/resources/js/Pages/Admin/Categories/Index.jsx
+@@ -0,0 +1,197 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import { Head, useForm, router, usePage } from '@inertiajs/react';
++import { useState } from 'react';
++
++export default function Index({ categories }) {
++    const { flash } = usePage().props;
++    const [editingId, setEditingId] = useState(null);
++
++    const createForm = useForm({ name: '', description: '' });
++    const editForm = useForm({ name: '', description: '', is_active: true });
++
++    const inputClass =
++        'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm';
++
++    const submitCreate = (e) => {
++        e.preventDefault();
++        createForm.post(route('admin.categories.store'), {
++            onSuccess: () => createForm.reset(),
++        });
++    };
++
++    const startEdit = (category) => {
++        setEditingId(category.id);
++        editForm.setData({
++            name: category.name,
++            description: category.description ?? '',
++            is_active: category.is_active,
++        });
++    };
++
++    const submitEdit = (e, id) => {
++        e.preventDefault();
++        editForm.put(route('admin.categories.update', id), {
++            onSuccess: () => setEditingId(null),
++        });
++    };
++
++    const toggleActive = (category) => {
++        router.patch(route('admin.categories.toggle-active', category.id), {}, { preserveScroll: true });
++    };
++
++    const destroy = (category) => {
++        if (confirm(`Yakin mau hapus kategori "${category.name}"?`)) {
++            router.delete(route('admin.categories.destroy', category.id), { preserveScroll: true });
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={<h2 className="text-xl font-semibold text-gray-800">Kelola Kategori Aduan</h2>}
++        >
++            <Head title="Kelola Kategori" />
++
++            <div className="py-6">
++                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
++                    {flash?.success && (
++                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
++                    )}
++                    {flash?.error && (
++                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>
++                    )}
++
++                    {/* FORM TAMBAH */}
++                    <div className="bg-white p-6 shadow sm:rounded-lg">
++                        <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Kategori Baru</h3>
++                        <form onSubmit={submitCreate} className="space-y-4">
++                            <div>
++                                <label className="block text-sm font-medium text-gray-700">Nama Kategori</label>
++                                <input
++                                    type="text"
++                                    value={createForm.data.name}
++                                    onChange={(e) => createForm.setData('name', e.target.value)}
++                                    placeholder="Contoh: Fasilitas Sekolah"
++                                    className={inputClass}
++                                />
++                                {createForm.errors.name && (
++                                    <p className="mt-1 text-sm text-red-600">{createForm.errors.name}</p>
++                                )}
++                            </div>
++                            <div>
++                                <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
++                                <textarea
++                                    rows={2}
++                                    value={createForm.data.description}
++                                    onChange={(e) => createForm.setData('description', e.target.value)}
++                                    className={inputClass}
++                                />
++                                {createForm.errors.description && (
++                                    <p className="mt-1 text-sm text-red-600">{createForm.errors.description}</p>
++                                )}
++                            </div>
++                            <button
++                                type="submit"
++                                disabled={createForm.processing}
++                                className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50"
++                            >
++                                Tambah Kategori
++                            </button>
++                        </form>
++                    </div>
++
++                    {/* DAFTAR KATEGORI */}
++                    <div className="bg-white shadow sm:rounded-lg divide-y">
++                        {categories.length === 0 && (
++                            <p className="p-6 text-sm text-gray-500">Belum ada kategori.</p>
++                        )}
++
++                        {categories.map((category) => (
++                            <div key={category.id} className="p-4 flex gap-3">
++                                {editingId === category.id ? (
++                                    <form onSubmit={(e) => submitEdit(e, category.id)} className="flex-1 space-y-3">
++                                        <input
++                                            type="text"
++                                            value={editForm.data.name}
++                                            onChange={(e) => editForm.setData('name', e.target.value)}
++                                            className={inputClass}
++                                        />
++                                        {editForm.errors.name && (
++                                            <p className="text-sm text-red-600">{editForm.errors.name}</p>
++                                        )}
++                                        <textarea
++                                            rows={2}
++                                            value={editForm.data.description}
++                                            onChange={(e) => editForm.setData('description', e.target.value)}
++                                            className={inputClass}
++                                        />
++                                        <div className="flex items-center gap-3">
++                                            <label className="flex items-center gap-2 text-sm text-gray-600">
++                                                <input
++                                                    type="checkbox"
++                                                    checked={editForm.data.is_active}
++                                                    onChange={(e) => editForm.setData('is_active', e.target.checked)}
++                                                />
++                                                Aktif
++                                            </label>
++                                            <button
++                                                type="submit"
++                                                disabled={editForm.processing}
++                                                className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
++                                            >
++                                                Simpan
++                                            </button>
++                                            <button
++                                                type="button"
++                                                onClick={() => setEditingId(null)}
++                                                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200"
++                                            >
++                                                Batal
++                                            </button>
++                                        </div>
++                                    </form>
++                                ) : (
++                                    <>
++                                        <div className="flex-1">
++                                            <p className="font-medium text-gray-900">
++                                                {category.name}{' '}
++                                                {!category.is_active && (
++                                                    <span className="text-xs font-normal text-red-500">(nonaktif)</span>
++                                                )}
++                                            </p>
++                                            {category.description && (
++                                                <p className="text-sm text-gray-500 mt-1">{category.description}</p>
++                                            )}
++                                            <p className="text-xs text-gray-400 mt-1">
++                                                {category.reports_count ?? 0} aduan memakai kategori ini
++                                            </p>
++                                        </div>
++                                        <div className="flex flex-col gap-2 shrink-0">
++                                            <button
++                                                onClick={() => startEdit(category)}
++                                                className="px-3 py-1.5 text-sm text-indigo-600 hover:text-indigo-800"
++                                            >
++                                                Edit
++                                            </button>
++                                            <button
++                                                onClick={() => toggleActive(category)}
++                                                className="px-3 py-1.5 text-sm text-yellow-600 hover:text-yellow-800"
++                                            >
++                                                {category.is_active ? 'Nonaktifkan' : 'Aktifkan'}
++                                            </button>
++                                            <button
++                                                onClick={() => destroy(category)}
++                                                className="px-3 py-1.5 text-sm text-red-600 hover:text-red-800"
++                                            >
++                                                Hapus
++                                            </button>
++                                        </div>
++                                    </>
++                                )}
++                            </div>
++                        ))}
++                    </div>
++                </div>
++            </div>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Admin/Destinations/Index.jsx b/resources/js/Pages/Admin/Destinations/Index.jsx
+new file mode 100644
+index 0000000..ffde8e6
+--- /dev/null
++++ b/resources/js/Pages/Admin/Destinations/Index.jsx
+@@ -0,0 +1,192 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import { Head, useForm, router, usePage } from '@inertiajs/react';
++import { useState } from 'react';
++
++export default function Index({ destinations }) {
++    const { flash } = usePage().props;
++    const [editingId, setEditingId] = useState(null);
++
++    const createForm = useForm({ name: '', description: '' });
++    const editForm = useForm({ name: '', description: '', is_active: true });
++
++    const inputClass =
++        'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm';
++
++    const submitCreate = (e) => {
++        e.preventDefault();
++        createForm.post(route('admin.destinations.store'), {
++            onSuccess: () => createForm.reset(),
++        });
++    };
++
++    const startEdit = (destination) => {
++        setEditingId(destination.id);
++        editForm.setData({
++            name: destination.name,
++            description: destination.description ?? '',
++            is_active: destination.is_active,
++        });
++    };
++
++    const submitEdit = (e, id) => {
++        e.preventDefault();
++        editForm.put(route('admin.destinations.update', id), {
++            onSuccess: () => setEditingId(null),
++        });
++    };
++
++    const toggleActive = (destination) => {
++        router.patch(route('admin.destinations.toggle-active', destination.id), {}, { preserveScroll: true });
++    };
++
++    const destroy = (destination) => {
++        if (confirm(`Yakin mau hapus tujuan "${destination.name}"?`)) {
++            router.delete(route('admin.destinations.destroy', destination.id), { preserveScroll: true });
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={<h2 className="text-xl font-semibold text-gray-800">Kelola Tujuan Aduan</h2>}
++        >
++            <Head title="Kelola Tujuan" />
++
++            <div className="py-6">
++                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
++                    {flash?.success && (
++                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
++                    )}
++                    {flash?.error && (
++                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>
++                    )}
++
++                    <div className="bg-white p-6 shadow sm:rounded-lg">
++                        <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Tujuan Baru</h3>
++                        <form onSubmit={submitCreate} className="space-y-4">
++                            <div>
++                                <label className="block text-sm font-medium text-gray-700">Nama Tujuan</label>
++                                <input
++                                    type="text"
++                                    value={createForm.data.name}
++                                    onChange={(e) => createForm.setData('name', e.target.value)}
++                                    placeholder="Contoh: Wakasek Sarpras"
++                                    className={inputClass}
++                                />
++                                {createForm.errors.name && (
++                                    <p className="mt-1 text-sm text-red-600">{createForm.errors.name}</p>
++                                )}
++                            </div>
++                            <div>
++                                <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
++                                <textarea
++                                    rows={2}
++                                    value={createForm.data.description}
++                                    onChange={(e) => createForm.setData('description', e.target.value)}
++                                    className={inputClass}
++                                />
++                            </div>
++                            <button
++                                type="submit"
++                                disabled={createForm.processing}
++                                className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50"
++                            >
++                                Tambah Tujuan
++                            </button>
++                        </form>
++                    </div>
++
++                    <div className="bg-white shadow sm:rounded-lg divide-y">
++                        {destinations.length === 0 && (
++                            <p className="p-6 text-sm text-gray-500">Belum ada tujuan.</p>
++                        )}
++
++                        {destinations.map((destination) => (
++                            <div key={destination.id} className="p-4 flex gap-3">
++                                {editingId === destination.id ? (
++                                    <form onSubmit={(e) => submitEdit(e, destination.id)} className="flex-1 space-y-3">
++                                        <input
++                                            type="text"
++                                            value={editForm.data.name}
++                                            onChange={(e) => editForm.setData('name', e.target.value)}
++                                            className={inputClass}
++                                        />
++                                        {editForm.errors.name && (
++                                            <p className="text-sm text-red-600">{editForm.errors.name}</p>
++                                        )}
++                                        <textarea
++                                            rows={2}
++                                            value={editForm.data.description}
++                                            onChange={(e) => editForm.setData('description', e.target.value)}
++                                            className={inputClass}
++                                        />
++                                        <div className="flex items-center gap-3">
++                                            <label className="flex items-center gap-2 text-sm text-gray-600">
++                                                <input
++                                                    type="checkbox"
++                                                    checked={editForm.data.is_active}
++                                                    onChange={(e) => editForm.setData('is_active', e.target.checked)}
++                                                />
++                                                Aktif
++                                            </label>
++                                            <button
++                                                type="submit"
++                                                disabled={editForm.processing}
++                                                className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
++                                            >
++                                                Simpan
++                                            </button>
++                                            <button
++                                                type="button"
++                                                onClick={() => setEditingId(null)}
++                                                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200"
++                                            >
++                                                Batal
++                                            </button>
++                                        </div>
++                                    </form>
++                                ) : (
++                                    <>
++                                        <div className="flex-1">
++                                            <p className="font-medium text-gray-900">
++                                                {destination.name}{' '}
++                                                {!destination.is_active && (
++                                                    <span className="text-xs font-normal text-red-500">(nonaktif)</span>
++                                                )}
++                                            </p>
++                                            {destination.description && (
++                                                <p className="text-sm text-gray-500 mt-1">{destination.description}</p>
++                                            )}
++                                            <p className="text-xs text-gray-400 mt-1">
++                                                {destination.reports_count ?? 0} aduan mengarah ke tujuan ini
++                                            </p>
++                                        </div>
++                                        <div className="flex flex-col gap-2 shrink-0">
++                                            <button
++                                                onClick={() => startEdit(destination)}
++                                                className="px-3 py-1.5 text-sm text-indigo-600 hover:text-indigo-800"
++                                            >
++                                                Edit
++                                            </button>
++                                            <button
++                                                onClick={() => toggleActive(destination)}
++                                                className="px-3 py-1.5 text-sm text-yellow-600 hover:text-yellow-800"
++                                            >
++                                                {destination.is_active ? 'Nonaktifkan' : 'Aktifkan'}
++                                            </button>
++                                            <button
++                                                onClick={() => destroy(destination)}
++                                                className="px-3 py-1.5 text-sm text-red-600 hover:text-red-800"
++                                            >
++                                                Hapus
++                                            </button>
++                                        </div>
++                                    </>
++                                )}
++                            </div>
++                        ))}
++                    </div>
++                </div>
++            </div>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Admin/Reports/Index.jsx b/resources/js/Pages/Admin/Reports/Index.jsx
+new file mode 100644
+index 0000000..39cad2e
+--- /dev/null
++++ b/resources/js/Pages/Admin/Reports/Index.jsx
+@@ -0,0 +1,175 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import { Head, Link, router, usePage } from '@inertiajs/react';
++import { useState } from 'react';
++
++const statusStyles = {
++    terkirim: 'bg-gray-100 text-gray-700',
++    diterima: 'bg-blue-100 text-blue-700',
++    diproses: 'bg-yellow-100 text-yellow-700',
++    ditanggapi: 'bg-purple-100 text-purple-700',
++    selesai: 'bg-green-100 text-green-700',
++    ditolak: 'bg-red-100 text-red-700',
++    diblokir: 'bg-black text-white',
++};
++
++function Pagination({ links }) {
++    if (!links || links.length <= 3) return null;
++
++    return (
++        <div className="flex flex-wrap gap-1 justify-center py-4">
++            {links.map((link, i) => (
++                <button
++                    key={i}
++                    disabled={!link.url}
++                    onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true, preserveState: true })}
++                    className={`px-3 py-1.5 text-sm rounded-md border ${
++                        link.active
++                            ? 'bg-indigo-600 text-white border-indigo-600'
++                            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
++                    } ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`}
++                    dangerouslySetInnerHTML={{ __html: link.label }}
++                />
++            ))}
++        </div>
++    );
++}
++
++export default function Index({ reports, categories, statuses, filters }) {
++    const { flash } = usePage().props;
++    const [search, setSearch] = useState(filters.search ?? '');
++
++    const applyFilter = (key, value) => {
++        router.get(
++            route('admin.reports.index'),
++            { ...filters, search, [key]: value },
++            { preserveState: true }
++        );
++    };
++
++    const submitSearch = (e) => {
++        e.preventDefault();
++        applyFilter('search', search);
++    };
++
++    const destroy = (report) => {
++        if (confirm(`Yakin mau hapus aduan "${report.code}"? Tindakan ini tidak bisa dibatalkan.`)) {
++            router.delete(route('admin.reports.destroy', report.id));
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={<h2 className="text-xl font-semibold text-gray-800">Kelola Aduan</h2>}
++        >
++            <Head title="Kelola Aduan" />
++
++            <div className="py-6">
++                <div className="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
++                    {flash?.success && (
++                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
++                    )}
++
++                    {/* FILTERS */}
++                    <div className="bg-white p-4 shadow sm:rounded-lg flex flex-wrap gap-3 items-end">
++                        <form onSubmit={submitSearch} className="flex gap-2 flex-1 min-w-[200px]">
++                            <input
++                                type="text"
++                                value={search}
++                                onChange={(e) => setSearch(e.target.value)}
++                                placeholder="Cari kode / judul aduan..."
++                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                            />
++                            <button className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
++                                Cari
++                            </button>
++                        </form>
++
++                        <select
++                            value={filters.status ?? ''}
++                            onChange={(e) => applyFilter('status', e.target.value)}
++                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                        >
++                            <option value="">Semua Status</option>
++                            {statuses.map((status) => (
++                                <option key={status} value={status}>
++                                    {status}
++                                </option>
++                            ))}
++                        </select>
++
++                        <select
++                            value={filters.category_id ?? ''}
++                            onChange={(e) => applyFilter('category_id', e.target.value)}
++                            className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                        >
++                            <option value="">Semua Kategori</option>
++                            {categories.map((category) => (
++                                <option key={category.id} value={category.id}>
++                                    {category.name}
++                                </option>
++                            ))}
++                        </select>
++                    </div>
++
++                    {/* TABLE */}
++                    <div className="bg-white shadow sm:rounded-lg overflow-x-auto">
++                        <table className="min-w-full divide-y divide-gray-200 text-sm">
++                            <thead className="bg-gray-50">
++                                <tr>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Kode</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Judul</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Kategori</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Pelapor</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Tanggapan</th>
++                                    <th className="px-4 py-3 text-right font-medium text-gray-500">Aksi</th>
++                                </tr>
++                            </thead>
++                            <tbody className="divide-y divide-gray-100">
++                                {reports.data.length === 0 && (
++                                    <tr>
++                                        <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
++                                            Tidak ada aduan yang cocok.
++                                        </td>
++                                    </tr>
++                                )}
++                                {reports.data.map((report) => (
++                                    <tr key={report.id}>
++                                        <td className="px-4 py-3 font-mono text-xs text-gray-600">{report.code}</td>
++                                        <td className="px-4 py-3 text-gray-900 max-w-xs truncate">{report.title}</td>
++                                        <td className="px-4 py-3 text-gray-600">{report.category?.name ?? '-'}</td>
++                                        <td className="px-4 py-3 text-gray-600">
++                                            {report.is_anonymous ? 'Anonim' : report.user?.name ?? report.reporter_name ?? '-'}
++                                        </td>
++                                        <td className="px-4 py-3">
++                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-gray-100 text-gray-700'}`}>
++                                                {report.status}
++                                            </span>
++                                        </td>
++                                        <td className="px-4 py-3 text-gray-600">{report.responses_count ?? 0}</td>
++                                        <td className="px-4 py-3 text-right space-x-3">
++                                            <Link
++                                                href={route('admin.reports.show', report.id)}
++                                                className="text-indigo-600 hover:text-indigo-800"
++                                            >
++                                                Kelola
++                                            </Link>
++                                            <button
++                                                onClick={() => destroy(report)}
++                                                className="text-red-600 hover:text-red-800"
++                                            >
++                                                Hapus
++                                            </button>
++                                        </td>
++                                    </tr>
++                                ))}
++                            </tbody>
++                        </table>
++                    </div>
++
++                    <Pagination links={reports.links} />
++                </div>
++            </div>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Admin/Reports/Show.jsx b/resources/js/Pages/Admin/Reports/Show.jsx
+new file mode 100644
+index 0000000..c9f9d97
+--- /dev/null
++++ b/resources/js/Pages/Admin/Reports/Show.jsx
+@@ -0,0 +1,276 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import { Head, Link, router, useForm } from '@inertiajs/react';
++
++const statusStyles = {
++    terkirim: 'bg-gray-100 text-gray-700',
++    diterima: 'bg-blue-100 text-blue-700',
++    diproses: 'bg-yellow-100 text-yellow-700',
++    ditanggapi: 'bg-purple-100 text-purple-700',
++    selesai: 'bg-green-100 text-green-700',
++    ditolak: 'bg-red-100 text-red-700',
++    diblokir: 'bg-black text-white',
++};
++
++export default function Show({ report, destinations, statuses }) {
++    const statusForm = useForm({
++        status: report.status,
++        note: '',
++        destination_id: report.destination?.id ?? '',
++    });
++
++    const responseForm = useForm({ message: '' });
++
++    const submitStatus = (e) => {
++        e.preventDefault();
++        statusForm.put(route('admin.reports.update-status', report.id), {
++            preserveScroll: true,
++            onSuccess: () => statusForm.setData('note', ''),
++        });
++    };
++
++    const submitResponse = (e) => {
++        e.preventDefault();
++        responseForm.post(route('admin.reports.responses.store', report.id), {
++            preserveScroll: true,
++            onSuccess: () => responseForm.reset(),
++        });
++    };
++
++    const blockReport = () => {
++        if (confirm('Blokir aduan ini? Aduan akan disembunyikan dan tidak bisa diproses lebih lanjut.')) {
++            router.put(
++                route('admin.reports.update-status', report.id),
++                { status: 'diblokir', note: 'Aduan diblokir oleh admin.' },
++                { preserveScroll: true }
++            );
++        }
++    };
++
++    const destroy = () => {
++        if (confirm(`Yakin mau hapus aduan "${report.code}"? Tindakan ini tidak bisa dibatalkan.`)) {
++            router.delete(route('admin.reports.destroy', report.id));
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={
++                <div className="flex items-center justify-between">
++                    <h2 className="text-xl font-semibold text-gray-800">Detail Aduan {report.code}</h2>
++                    <Link href={route('admin.reports.index')} className="text-sm text-indigo-600 hover:text-indigo-800">
++                        &larr; Kembali ke daftar
++                    </Link>
++                </div>
++            }
++        >
++            <Head title={`Aduan ${report.code}`} />
++
++            <div className="py-6">
++                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
++
++                    {/* DETAIL ADUAN */}
++                    <div className="bg-white p-6 shadow sm:rounded-lg space-y-3">
++                        <div className="flex items-center justify-between">
++                            <span className="font-mono text-xs text-gray-500">{report.code}</span>
++                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusStyles[report.status] || 'bg-gray-100 text-gray-700'}`}>
++                                {report.status}
++                            </span>
++                        </div>
++                        <h3 className="text-lg font-semibold text-gray-900">{report.title}</h3>
++                        <p className="text-sm text-gray-700 whitespace-pre-line">{report.description}</p>
++
++                        <dl className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
++                            <div>
++                                <dt className="text-gray-400">Tipe</dt>
++                                <dd className="text-gray-700 capitalize">{report.type}</dd>
++                            </div>
++                            <div>
++                                <dt className="text-gray-400">Kategori</dt>
++                                <dd className="text-gray-700">{report.category?.name ?? '-'}</dd>
++                            </div>
++                            <div>
++                                <dt className="text-gray-400">Tujuan</dt>
++                                <dd className="text-gray-700">{report.destination?.name ?? '-'}</dd>
++                            </div>
++                            <div>
++                                <dt className="text-gray-400">Pelapor</dt>
++                                <dd className="text-gray-700">
++                                    {report.is_anonymous ? 'Anonim' : report.user?.name ?? report.reporter_name ?? '-'}
++                                </dd>
++                            </div>
++                            {!report.is_anonymous && report.user?.email && (
++                                <div>
++                                    <dt className="text-gray-400">Email</dt>
++                                    <dd className="text-gray-700">{report.user.email}</dd>
++                                </div>
++                            )}
++                            {report.reporter_contact && (
++                                <div>
++                                    <dt className="text-gray-400">Kontak</dt>
++                                    <dd className="text-gray-700">{report.reporter_contact}</dd>
++                                </div>
++                            )}
++                        </dl>
++
++                        {report.attachments?.length > 0 && (
++                            <div className="pt-2 border-t">
++                                <p className="text-gray-400 text-sm mb-2">Lampiran</p>
++                                <div className="flex flex-wrap gap-2">
++                                    {report.attachments.map((att) => (
++                                        <a
++                                            key={att.id}
++                                            href={`/storage/${att.file_path}`}
++                                            target="_blank"
++                                            rel="noreferrer"
++                                            className="text-xs px-3 py-1.5 bg-gray-100 rounded-md text-indigo-600 hover:text-indigo-800"
++                                        >
++                                            {att.file_type === 'image' ? '🖼️' : '🎬'} Lihat lampiran
++                                        </a>
++                                    ))}
++                                </div>
++                            </div>
++                        )}
++                    </div>
++
++                    {/* UBAH STATUS */}
++                    <div className="bg-white p-6 shadow sm:rounded-lg">
++                        <h3 className="text-lg font-medium text-gray-900 mb-4">Ubah Status Aduan</h3>
++                        <form onSubmit={submitStatus} className="space-y-4">
++                            <div className="grid sm:grid-cols-2 gap-4">
++                                <div>
++                                    <label className="block text-sm font-medium text-gray-700">Status</label>
++                                    <select
++                                        value={statusForm.data.status}
++                                        onChange={(e) => statusForm.setData('status', e.target.value)}
++                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm capitalize"
++                                    >
++                                        {statuses.map((status) => (
++                                            <option key={status} value={status} className="capitalize">
++                                                {status}
++                                            </option>
++                                        ))}
++                                    </select>
++                                </div>
++                                <div>
++                                    <label className="block text-sm font-medium text-gray-700">Tujuan</label>
++                                    <select
++                                        value={statusForm.data.destination_id}
++                                        onChange={(e) => statusForm.setData('destination_id', e.target.value)}
++                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                                    >
++                                        <option value="">- Belum ditentukan -</option>
++                                        {destinations.map((dest) => (
++                                            <option key={dest.id} value={dest.id}>
++                                                {dest.name}
++                                            </option>
++                                        ))}
++                                    </select>
++                                </div>
++                            </div>
++                            <div>
++                                <label className="block text-sm font-medium text-gray-700">Catatan (opsional)</label>
++                                <textarea
++                                    rows={2}
++                                    value={statusForm.data.note}
++                                    onChange={(e) => statusForm.setData('note', e.target.value)}
++                                    placeholder="Catatan internal terkait perubahan status ini"
++                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                                />
++                            </div>
++                            <div className="flex items-center justify-between">
++                                <button
++                                    type="submit"
++                                    disabled={statusForm.processing}
++                                    className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50"
++                                >
++                                    Simpan Status
++                                </button>
++                                <div className="flex gap-3">
++                                    <button
++                                        type="button"
++                                        onClick={blockReport}
++                                        className="px-4 py-2 text-sm font-medium text-yellow-700 hover:text-yellow-900"
++                                    >
++                                        Blokir Aduan
++                                    </button>
++                                    <button
++                                        type="button"
++                                        onClick={destroy}
++                                        className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-800"
++                                    >
++                                        Hapus Aduan
++                                    </button>
++                                </div>
++                            </div>
++                        </form>
++                    </div>
++
++                    {/* RIWAYAT STATUS */}
++                    {report.status_histories?.length > 0 && (
++                        <div className="bg-white p-6 shadow sm:rounded-lg">
++                            <h3 className="text-lg font-medium text-gray-900 mb-4">Riwayat Status</h3>
++                            <ol className="space-y-3">
++                                {report.status_histories.map((h) => (
++                                    <li key={h.id} className="text-sm border-l-2 border-indigo-200 pl-3">
++                                        <span className="font-medium capitalize text-gray-800">{h.status}</span>
++                                        {h.note && <span className="text-gray-500"> — {h.note}</span>}
++                                        <div className="text-xs text-gray-400">
++                                            {new Date(h.created_at).toLocaleString('id-ID')}
++                                            {h.changed_by && ` · oleh ${h.changed_by.name}`}
++                                        </div>
++                                    </li>
++                                ))}
++                            </ol>
++                        </div>
++                    )}
++
++                    {/* TANGGAPAN */}
++                    <div className="bg-white p-6 shadow sm:rounded-lg space-y-4">
++                        <h3 className="text-lg font-medium text-gray-900">Tanggapan</h3>
++
++                        {report.responses?.length === 0 && (
++                            <p className="text-sm text-gray-500">Belum ada tanggapan.</p>
++                        )}
++
++                        <div className="space-y-3">
++                            {report.responses?.map((r) => (
++                                <div
++                                    key={r.id}
++                                    className={`p-3 rounded-md text-sm ${r.is_admin ? 'bg-indigo-50' : 'bg-gray-50'}`}
++                                >
++                                    <div className="flex justify-between text-xs text-gray-500 mb-1">
++                                        <span className="font-medium">
++                                            {r.is_admin ? `Admin${r.user ? ` (${r.user.name})` : ''}` : r.user?.name ?? 'Pelapor'}
++                                        </span>
++                                        <span>{new Date(r.created_at).toLocaleString('id-ID')}</span>
++                                    </div>
++                                    <p className="text-gray-800">{r.message}</p>
++                                </div>
++                            ))}
++                        </div>
++
++                        <form onSubmit={submitResponse} className="space-y-2 pt-3 border-t">
++                            <textarea
++                                rows={3}
++                                value={responseForm.data.message}
++                                onChange={(e) => responseForm.setData('message', e.target.value)}
++                                placeholder="Tulis tanggapan untuk pelapor..."
++                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                            />
++                            {responseForm.errors.message && (
++                                <p className="text-sm text-red-600">{responseForm.errors.message}</p>
++                            )}
++                            <button
++                                type="submit"
++                                disabled={responseForm.processing}
++                                className="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50"
++                            >
++                                Kirim Tanggapan
++                            </button>
++                        </form>
++                    </div>
++                </div>
++            </div>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Admin/Responses/Index.jsx b/resources/js/Pages/Admin/Responses/Index.jsx
+new file mode 100644
+index 0000000..c81776d
+--- /dev/null
++++ b/resources/js/Pages/Admin/Responses/Index.jsx
+@@ -0,0 +1,158 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
++import { useState } from 'react';
++
++function Pagination({ links }) {
++    if (!links || links.length <= 3) return null;
++
++    return (
++        <div className="flex flex-wrap gap-1 justify-center py-4">
++            {links.map((link, i) => (
++                <button
++                    key={i}
++                    disabled={!link.url}
++                    onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true, preserveState: true })}
++                    className={`px-3 py-1.5 text-sm rounded-md border ${
++                        link.active
++                            ? 'bg-indigo-600 text-white border-indigo-600'
++                            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
++                    } ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`}
++                    dangerouslySetInnerHTML={{ __html: link.label }}
++                />
++            ))}
++        </div>
++    );
++}
++
++export default function Index({ responses, filters }) {
++    const { flash } = usePage().props;
++    const [search, setSearch] = useState(filters.search ?? '');
++    const [editingId, setEditingId] = useState(null);
++
++    const editForm = useForm({ message: '' });
++
++    const submitSearch = (e) => {
++        e.preventDefault();
++        router.get(route('admin.responses.index'), { search }, { preserveState: true });
++    };
++
++    const startEdit = (response) => {
++        setEditingId(response.id);
++        editForm.setData('message', response.message);
++    };
++
++    const submitEdit = (e, id) => {
++        e.preventDefault();
++        editForm.put(route('admin.responses.update', id), {
++            onSuccess: () => setEditingId(null),
++        });
++    };
++
++    const destroy = (response) => {
++        if (confirm('Yakin mau hapus tanggapan ini?')) {
++            router.delete(route('admin.responses.destroy', response.id), { preserveScroll: true });
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={<h2 className="text-xl font-semibold text-gray-800">Kelola Tanggapan</h2>}
++        >
++            <Head title="Kelola Tanggapan" />
++
++            <div className="py-6">
++                <div className="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
++                    {flash?.success && (
++                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
++                    )}
++
++                    <form onSubmit={submitSearch} className="flex gap-2">
++                        <input
++                            type="text"
++                            value={search}
++                            onChange={(e) => setSearch(e.target.value)}
++                            placeholder="Cari kode aduan atau isi tanggapan..."
++                            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                        />
++                        <button className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700">
++                            Cari
++                        </button>
++                    </form>
++
++                    <div className="bg-white shadow sm:rounded-lg divide-y">
++                        {responses.data.length === 0 && (
++                            <p className="p-6 text-sm text-gray-500">Belum ada tanggapan.</p>
++                        )}
++
++                        {responses.data.map((response) => (
++                            <div key={response.id} className="p-4 space-y-2">
++                                <div className="flex items-center justify-between text-xs text-gray-500">
++                                    <Link
++                                        href={route('admin.reports.show', response.report.id)}
++                                        className="font-mono text-indigo-600 hover:underline"
++                                    >
++                                        {response.report.code}
++                                    </Link>
++                                    <span>{response.user?.name ?? 'Admin'}</span>
++                                </div>
++                                <p className="text-sm text-gray-700 truncate">{response.report.title}</p>
++
++                                {editingId === response.id ? (
++                                    <form onSubmit={(e) => submitEdit(e, response.id)} className="space-y-2">
++                                        <textarea
++                                            rows={3}
++                                            value={editForm.data.message}
++                                            onChange={(e) => editForm.setData('message', e.target.value)}
++                                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                                        />
++                                        {editForm.errors.message && (
++                                            <p className="text-sm text-red-600">{editForm.errors.message}</p>
++                                        )}
++                                        <div className="flex gap-2">
++                                            <button
++                                                type="submit"
++                                                disabled={editForm.processing}
++                                                className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700"
++                                            >
++                                                Simpan
++                                            </button>
++                                            <button
++                                                type="button"
++                                                onClick={() => setEditingId(null)}
++                                                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200"
++                                            >
++                                                Batal
++                                            </button>
++                                        </div>
++                                    </form>
++                                ) : (
++                                    <>
++                                        <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-800">
++                                            {response.message}
++                                        </div>
++                                        <div className="flex gap-3">
++                                            <button
++                                                onClick={() => startEdit(response)}
++                                                className="text-sm text-indigo-600 hover:text-indigo-800"
++                                            >
++                                                Edit
++                                            </button>
++                                            <button
++                                                onClick={() => destroy(response)}
++                                                className="text-sm text-red-600 hover:text-red-800"
++                                            >
++                                                Hapus
++                                            </button>
++                                        </div>
++                                    </>
++                                )}
++                            </div>
++                        ))}
++                    </div>
++
++                    <Pagination links={responses.links} />
++                </div>
++            </div>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Admin/Track/Show.jsx b/resources/js/Pages/Admin/Track/Show.jsx
+index 05125e0..0ed0413 100644
+--- a/resources/js/Pages/Admin/Track/Show.jsx
++++ b/resources/js/Pages/Admin/Track/Show.jsx
+@@ -2,11 +2,13 @@ import { Head, Link } from '@inertiajs/react';
+ import { ArrowLeft, CheckCircle2, Clock, MessageCircle, Star } from 'lucide-react';
+ 
+ const statusMap = {
+-    pending:      { label: 'Menunggu Verifikasi', color: 'bg-yellow-100 text-yellow-700' },
+-    diverifikasi: { label: 'Terverifikasi',        color: 'bg-blue-100 text-blue-700' },
+-    diproses:     { label: 'Diproses',             color: 'bg-marble/30 text-navy' },
+-    selesai:      { label: 'Selesai',              color: 'bg-green-100 text-green-700' },
+-    ditolak:      { label: 'Ditolak',              color: 'bg-red-100 text-crimson' },
++    terkirim:   { label: 'Terkirim',    color: 'bg-yellow-100 text-yellow-700' },
++    diterima:   { label: 'Diterima',    color: 'bg-blue-100 text-blue-700' },
++    diproses:   { label: 'Diproses',    color: 'bg-marble/30 text-navy' },
++    ditanggapi: { label: 'Ditanggapi',  color: 'bg-purple-100 text-purple-700' },
++    selesai:    { label: 'Selesai',     color: 'bg-green-100 text-green-700' },
++    ditolak:    { label: 'Ditolak',     color: 'bg-red-100 text-crimson' },
++    diblokir:   { label: 'Diblokir',    color: 'bg-gray-800 text-white' },
+ };
+ 
+ export default function TrackShow({ report }) {
+diff --git a/resources/js/Pages/Admin/Users/Index.jsx b/resources/js/Pages/Admin/Users/Index.jsx
+new file mode 100644
+index 0000000..e9b85d4
+--- /dev/null
++++ b/resources/js/Pages/Admin/Users/Index.jsx
+@@ -0,0 +1,312 @@
++import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
++import Modal from '@/Components/Modal';
++import InputLabel from '@/Components/InputLabel';
++import TextInput from '@/Components/TextInput';
++import InputError from '@/Components/InputError';
++import PrimaryButton from '@/Components/PrimaryButton';
++import SecondaryButton from '@/Components/SecondaryButton';
++import { Head, useForm, router, usePage } from '@inertiajs/react';
++import { useState } from 'react';
++
++const statusStyles = {
++    active: 'bg-green-100 text-green-700',
++    inactive: 'bg-gray-100 text-gray-700',
++    blocked: 'bg-red-100 text-red-700',
++};
++
++const statusLabels = {
++    active: 'Aktif',
++    inactive: 'Nonaktif',
++    blocked: 'Diblokir',
++};
++
++export default function Index({ users }) {
++    const { flash, auth } = usePage().props;
++    const [showCreate, setShowCreate] = useState(false);
++    const [editingUser, setEditingUser] = useState(null);
++
++    const createForm = useForm({
++        name: '',
++        email: '',
++        password: '',
++        password_confirmation: '',
++        role: 'user',
++    });
++
++    const editForm = useForm({ name: '', email: '', role: 'user' });
++
++    const openCreate = () => {
++        createForm.reset();
++        createForm.clearErrors();
++        setShowCreate(true);
++    };
++
++    const submitCreate = (e) => {
++        e.preventDefault();
++        createForm.post(route('admin.users.store'), {
++            onSuccess: () => {
++                createForm.reset();
++                setShowCreate(false);
++            },
++        });
++    };
++
++    const openEdit = (user) => {
++        editForm.clearErrors();
++        editForm.setData({ name: user.name, email: user.email, role: user.role });
++        setEditingUser(user);
++    };
++
++    const submitEdit = (e) => {
++        e.preventDefault();
++        editForm.put(route('admin.users.update', editingUser.id), {
++            onSuccess: () => setEditingUser(null),
++        });
++    };
++
++    const updateStatus = (user, status) => {
++        const confirmMsg = {
++            active: `Aktifkan kembali akun ${user.name}?`,
++            inactive: `Nonaktifkan akun ${user.name}?`,
++            blocked: `Blokir akun ${user.name}? User tidak akan bisa login.`,
++        }[status];
++
++        if (confirm(confirmMsg)) {
++            router.patch(route('admin.users.update-status', user.id), { status }, { preserveScroll: true });
++        }
++    };
++
++    const destroy = (user) => {
++        if (confirm(`Yakin mau hapus user "${user.name}"? Semua data terkait akan ikut hilang.`)) {
++            router.delete(route('admin.users.destroy', user.id), { preserveScroll: true });
++        }
++    };
++
++    return (
++        <AuthenticatedLayout
++            header={<h2 className="text-xl font-semibold text-gray-800">Kelola User</h2>}
++        >
++            <Head title="Kelola User" />
++
++            <div className="py-6">
++                <div className="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
++                    {flash?.success && (
++                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
++                    )}
++                    {flash?.error && (
++                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>
++                    )}
++
++                    <div className="flex justify-end">
++                        <PrimaryButton onClick={openCreate}>+ Tambah User</PrimaryButton>
++                    </div>
++
++                    <div className="bg-white shadow sm:rounded-lg overflow-x-auto">
++                        <table className="min-w-full divide-y divide-gray-200 text-sm">
++                            <thead className="bg-gray-50">
++                                <tr>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Nama</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Email</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Role</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
++                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Aduan</th>
++                                    <th className="px-4 py-3 text-right font-medium text-gray-500">Aksi</th>
++                                </tr>
++                            </thead>
++                            <tbody className="divide-y divide-gray-100">
++                                {users.map((user) => (
++                                    <tr key={user.id}>
++                                        <td className="px-4 py-3 text-gray-900 font-medium">
++                                            {user.name}
++                                            {user.id === auth.user.id && (
++                                                <span className="ml-1 text-xs text-gray-400">(kamu)</span>
++                                            )}
++                                        </td>
++                                        <td className="px-4 py-3 text-gray-600">{user.email}</td>
++                                        <td className="px-4 py-3">
++                                            <span className="capitalize px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
++                                                {user.role}
++                                            </span>
++                                        </td>
++                                        <td className="px-4 py-3">
++                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[user.status]}`}>
++                                                {statusLabels[user.status]}
++                                            </span>
++                                        </td>
++                                        <td className="px-4 py-3 text-gray-600">{user.reports_count ?? 0}</td>
++                                        <td className="px-4 py-3">
++                                            <div className="flex justify-end flex-wrap gap-2">
++                                                <button
++                                                    onClick={() => openEdit(user)}
++                                                    className="text-indigo-600 hover:text-indigo-800"
++                                                >
++                                                    Edit
++                                                </button>
++                                                {user.id !== auth.user.id && (
++                                                    <>
++                                                        {user.status !== 'active' && (
++                                                            <button
++                                                                onClick={() => updateStatus(user, 'active')}
++                                                                className="text-green-600 hover:text-green-800"
++                                                            >
++                                                                Aktifkan
++                                                            </button>
++                                                        )}
++                                                        {user.status !== 'inactive' && (
++                                                            <button
++                                                                onClick={() => updateStatus(user, 'inactive')}
++                                                                className="text-yellow-600 hover:text-yellow-800"
++                                                            >
++                                                                Nonaktifkan
++                                                            </button>
++                                                        )}
++                                                        {user.status !== 'blocked' && (
++                                                            <button
++                                                                onClick={() => updateStatus(user, 'blocked')}
++                                                                className="text-red-600 hover:text-red-800"
++                                                            >
++                                                                Blokir
++                                                            </button>
++                                                        )}
++                                                        <button
++                                                            onClick={() => destroy(user)}
++                                                            className="text-red-700 font-medium hover:text-red-900"
++                                                        >
++                                                            Hapus
++                                                        </button>
++                                                    </>
++                                                )}
++                                            </div>
++                                        </td>
++                                    </tr>
++                                ))}
++                            </tbody>
++                        </table>
++                    </div>
++                </div>
++            </div>
++
++            {/* MODAL TAMBAH USER */}
++            <Modal show={showCreate} onClose={() => setShowCreate(false)}>
++                <form onSubmit={submitCreate} className="p-6 space-y-4">
++                    <h2 className="text-lg font-medium text-gray-900">Tambah User Baru</h2>
++
++                    <div>
++                        <InputLabel htmlFor="name" value="Nama" />
++                        <TextInput
++                            id="name"
++                            className="mt-1 block w-full"
++                            value={createForm.data.name}
++                            onChange={(e) => createForm.setData('name', e.target.value)}
++                        />
++                        <InputError message={createForm.errors.name} className="mt-1" />
++                    </div>
++
++                    <div>
++                        <InputLabel htmlFor="email" value="Email" />
++                        <TextInput
++                            id="email"
++                            type="email"
++                            className="mt-1 block w-full"
++                            value={createForm.data.email}
++                            onChange={(e) => createForm.setData('email', e.target.value)}
++                        />
++                        <InputError message={createForm.errors.email} className="mt-1" />
++                    </div>
++
++                    <div>
++                        <InputLabel htmlFor="password" value="Password" />
++                        <TextInput
++                            id="password"
++                            type="password"
++                            className="mt-1 block w-full"
++                            value={createForm.data.password}
++                            onChange={(e) => createForm.setData('password', e.target.value)}
++                        />
++                        <InputError message={createForm.errors.password} className="mt-1" />
++                    </div>
++
++                    <div>
++                        <InputLabel htmlFor="password_confirmation" value="Konfirmasi Password" />
++                        <TextInput
++                            id="password_confirmation"
++                            type="password"
++                            className="mt-1 block w-full"
++                            value={createForm.data.password_confirmation}
++                            onChange={(e) => createForm.setData('password_confirmation', e.target.value)}
++                        />
++                    </div>
++
++                    <div>
++                        <InputLabel htmlFor="role" value="Role" />
++                        <select
++                            id="role"
++                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                            value={createForm.data.role}
++                            onChange={(e) => createForm.setData('role', e.target.value)}
++                        >
++                            <option value="user">User</option>
++                            <option value="admin">Admin</option>
++                        </select>
++                    </div>
++
++                    <div className="flex justify-end gap-3">
++                        <SecondaryButton onClick={() => setShowCreate(false)}>Batal</SecondaryButton>
++                        <PrimaryButton disabled={createForm.processing}>Simpan</PrimaryButton>
++                    </div>
++                </form>
++            </Modal>
++
++            {/* MODAL EDIT USER */}
++            <Modal show={!!editingUser} onClose={() => setEditingUser(null)}>
++                <form onSubmit={submitEdit} className="p-6 space-y-4">
++                    <h2 className="text-lg font-medium text-gray-900">Edit User</h2>
++
++                    <div>
++                        <InputLabel htmlFor="edit_name" value="Nama" />
++                        <TextInput
++                            id="edit_name"
++                            className="mt-1 block w-full"
++                            value={editForm.data.name}
++                            onChange={(e) => editForm.setData('name', e.target.value)}
++                        />
++                        <InputError message={editForm.errors.name} className="mt-1" />
++                    </div>
++
++                    <div>
++                        <InputLabel htmlFor="edit_email" value="Email" />
++                        <TextInput
++                            id="edit_email"
++                            type="email"
++                            className="mt-1 block w-full"
++                            value={editForm.data.email}
++                            onChange={(e) => editForm.setData('email', e.target.value)}
++                        />
++                        <InputError message={editForm.errors.email} className="mt-1" />
++                    </div>
++
++                    <div>
++                        <InputLabel htmlFor="edit_role" value="Role" />
++                        <select
++                            id="edit_role"
++                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
++                            value={editForm.data.role}
++                            onChange={(e) => editForm.setData('role', e.target.value)}
++                        >
++                            <option value="user">User</option>
++                            <option value="admin">Admin</option>
++                        </select>
++                        <p className="mt-1 text-xs text-gray-400">
++                            Jadikan "Admin" untuk memberi akses penuh ke dashboard admin.
++                        </p>
++                    </div>
++
++                    <div className="flex justify-end gap-3">
++                        <SecondaryButton onClick={() => setEditingUser(null)}>Batal</SecondaryButton>
++                        <PrimaryButton disabled={editForm.processing}>Simpan</PrimaryButton>
++                    </div>
++                </form>
++            </Modal>
++        </AuthenticatedLayout>
++    );
++}
+diff --git a/resources/js/Pages/Report/Index.jsx b/resources/js/Pages/Report/Index.jsx
+index 54338a6..a24c8c9 100644
+--- a/resources/js/Pages/Report/Index.jsx
++++ b/resources/js/Pages/Report/Index.jsx
+@@ -3,11 +3,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+ 
+ const statusStyles = {
+     terkirim: 'bg-gray-100 text-gray-700',
+-    diverifikasi: 'bg-blue-100 text-blue-700',
++    diterima: 'bg-blue-100 text-blue-700',
+     diproses: 'bg-yellow-100 text-yellow-700',
+-    ditindaklanjuti: 'bg-purple-100 text-purple-700',
++    ditanggapi: 'bg-purple-100 text-purple-700',
+     selesai: 'bg-green-100 text-green-700',
+     ditolak: 'bg-red-100 text-red-700',
++    diblokir: 'bg-black text-white',
+ };
+ 
+ export default function Index({ reports }) {
+diff --git a/routes/web.php b/routes/web.php
+index ff5e6a5..71d5874 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -8,6 +8,12 @@
+ use App\Http\Controllers\Admin\LandingSettingController;
+ use App\Http\Controllers\Admin\LandingFaqController;
+ use App\Http\Controllers\Admin\LandingStepController;
++use App\Http\Controllers\Admin\CategoryController;
++use App\Http\Controllers\Admin\DestinationController;
++use App\Http\Controllers\Admin\BannedWordController;
++use App\Http\Controllers\Admin\UserController;
++use App\Http\Controllers\Admin\ReportController as AdminReportController;
++use App\Http\Controllers\Admin\ReportResponseController;
+ use Illuminate\Foundation\Application;
+ use Illuminate\Support\Facades\Route;
+ use Inertia\Inertia;
+@@ -50,6 +56,46 @@
+     Route::put('/landing/steps/{step}', [LandingStepController::class, 'update'])->name('landing.steps.update');
+     Route::delete('/landing/steps/{step}', [LandingStepController::class, 'destroy'])->name('landing.steps.destroy');
+     Route::post('/landing/steps/reorder', [LandingStepController::class, 'reorder'])->name('landing.steps.reorder');
++
++    // Kelola Kategori Aduan
++    Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
++    Route::post('/categories', [CategoryController::class, 'store'])->name('categories.store');
++    Route::put('/categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
++    Route::patch('/categories/{category}/toggle-active', [CategoryController::class, 'toggleActive'])->name('categories.toggle-active');
++    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
++
++    // Kelola Tujuan
++    Route::get('/destinations', [DestinationController::class, 'index'])->name('destinations.index');
++    Route::post('/destinations', [DestinationController::class, 'store'])->name('destinations.store');
++    Route::put('/destinations/{destination}', [DestinationController::class, 'update'])->name('destinations.update');
++    Route::patch('/destinations/{destination}/toggle-active', [DestinationController::class, 'toggleActive'])->name('destinations.toggle-active');
++    Route::delete('/destinations/{destination}', [DestinationController::class, 'destroy'])->name('destinations.destroy');
++
++    // Kelola Kata Terlarang
++    Route::get('/banned-words', [BannedWordController::class, 'index'])->name('banned-words.index');
++    Route::post('/banned-words', [BannedWordController::class, 'store'])->name('banned-words.store');
++    Route::put('/banned-words/{bannedWord}', [BannedWordController::class, 'update'])->name('banned-words.update');
++    Route::patch('/banned-words/{bannedWord}/toggle-active', [BannedWordController::class, 'toggleActive'])->name('banned-words.toggle-active');
++    Route::delete('/banned-words/{bannedWord}', [BannedWordController::class, 'destroy'])->name('banned-words.destroy');
++
++    // Kelola User
++    Route::get('/users', [UserController::class, 'index'])->name('users.index');
++    Route::post('/users', [UserController::class, 'store'])->name('users.store');
++    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
++    Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.update-status');
++    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
++
++    // Kelola Aduan
++    Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
++    Route::get('/reports/{report}', [AdminReportController::class, 'show'])->name('reports.show');
++    Route::patch('/reports/{report}/status', [AdminReportController::class, 'updateStatus'])->name('reports.update-status');
++    Route::delete('/reports/{report}', [AdminReportController::class, 'destroy'])->name('reports.destroy');
++    Route::post('/reports/{report}/responses', [ReportResponseController::class, 'store'])->name('reports.responses.store');
++
++    // Kelola Tanggapan (global)
++    Route::get('/responses', [ReportResponseController::class, 'index'])->name('responses.index');
++    Route::put('/responses/{response}', [ReportResponseController::class, 'update'])->name('responses.update');
++    Route::delete('/responses/{response}', [ReportResponseController::class, 'destroy'])->name('responses.destroy');
+ });
+ 
+ Route::get('/track', [TrackController::class, 'index'])->name('track.index');
