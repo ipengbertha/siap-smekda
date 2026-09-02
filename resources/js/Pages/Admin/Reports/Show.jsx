@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Image, Film, ShieldAlert, Trash2, Send } from 'lucide-react';
+import { ArrowLeft, Image, Film, ShieldAlert, Trash2, Send, Eye, EyeOff } from 'lucide-react';
 
 const statusLabel = {
     terkirim: 'Terkirim',
@@ -44,11 +44,11 @@ export default function Show({ report, destinations, statuses }) {
         destination_id: report.destination?.id ?? '',
     });
 
-    const responseForm = useForm({ message: '' });
+    const responseForm = useForm({ message: '', is_internal: false });
 
     const submitStatus = (e) => {
         e.preventDefault();
-        statusForm.put(route('admin.reports.update-status', report.id), {
+        statusForm.patch(route('admin.reports.update-status', report.id), {
             preserveScroll: true,
             onSuccess: () => statusForm.setData('note', ''),
         });
@@ -64,7 +64,7 @@ export default function Show({ report, destinations, statuses }) {
 
     const blockReport = () => {
         if (confirm('Blokir aduan ini? Aduan akan disembunyikan dan tidak bisa diproses lebih lanjut.')) {
-            router.put(
+            router.patch(
                 route('admin.reports.update-status', report.id),
                 { status: 'diblokir', note: 'Aduan diblokir oleh admin.' },
                 { preserveScroll: true }
@@ -260,12 +260,21 @@ export default function Show({ report, destinations, statuses }) {
                             <div
                                 key={r.id}
                                 className={`p-3.5 rounded-xl text-sm ${
-                                    r.is_admin ? 'bg-crimson/5 border border-crimson/10' : 'bg-navy/[0.03]'
+                                    r.is_internal
+                                        ? 'bg-gold/10 border border-gold/30'
+                                        : r.is_admin
+                                        ? 'bg-crimson/5 border border-crimson/10'
+                                        : 'bg-navy/[0.03]'
                                 }`}
                             >
-                                <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                                    <span className="font-semibold text-navy/70">
+                                <div className="flex justify-between items-center text-xs text-gray-400 mb-1.5">
+                                    <span className="font-semibold text-navy/70 inline-flex items-center gap-1.5">
                                         {r.is_admin ? `Admin${r.user ? ` (${r.user.name})` : ''}` : r.user?.name ?? 'Pelapor'}
+                                        {r.is_internal && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gold/20 text-[#8a6d00] text-[10px] font-semibold">
+                                                <EyeOff size={10} /> Internal
+                                            </span>
+                                        )}
                                     </span>
                                     <span>{new Date(r.created_at).toLocaleString('id-ID')}</span>
                                 </div>
@@ -285,12 +294,52 @@ export default function Show({ report, destinations, statuses }) {
                         {responseForm.errors.message && (
                             <p className="text-xs text-crimson">{responseForm.errors.message}</p>
                         )}
+
+                        <div>
+                            <label className="block text-xs font-medium text-navy/70 mb-1.5">
+                                Tujuan tanggapan
+                            </label>
+                            <div className="inline-flex rounded-full bg-navy/[0.04] p-1 gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => responseForm.setData('is_internal', false)}
+                                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                                        !responseForm.data.is_internal
+                                            ? 'bg-crimson text-white'
+                                            : 'text-navy/50 hover:text-navy'
+                                    }`}
+                                >
+                                    <Eye size={13} /> Kirim ke Pelapor
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => responseForm.setData('is_internal', true)}
+                                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                                        responseForm.data.is_internal
+                                            ? 'bg-gold text-[#3f3300]'
+                                            : 'text-navy/50 hover:text-navy'
+                                    }`}
+                                >
+                                    <EyeOff size={13} /> Catatan Internal
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-gray-400 mt-1.5">
+                                {responseForm.data.is_internal
+                                    ? 'Catatan ini cuma kelihatan di dashboard admin, pelapor nggak akan melihatnya di halaman lacak.'
+                                    : 'Tanggapan ini akan langsung tampil ke pelapor di halaman lacak aduan.'}
+                            </p>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={responseForm.processing}
-                            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors disabled:opacity-50"
+                            className={`inline-flex items-center gap-1.5 px-5 py-2.5 text-white text-sm font-semibold rounded-full transition-colors disabled:opacity-50 ${
+                                responseForm.data.is_internal
+                                    ? 'bg-gold text-[#3f3300] hover:bg-gold/90'
+                                    : 'bg-crimson hover:bg-crimson-dark'
+                            }`}
                         >
-                            <Send size={14} /> Kirim Tanggapan
+                            <Send size={14} /> {responseForm.data.is_internal ? 'Simpan Catatan' : 'Kirim Tanggapan'}
                         </button>
                     </form>
                 </SectionCard>

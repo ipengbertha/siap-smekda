@@ -19,7 +19,7 @@ class TrackController extends Controller
                 'category:id,name',
                 'destination:id,name',
                 'statusHistories',
-                'responses',
+                'responses' => fn ($q) => $q->where('is_internal', false),
                 'rating',
             ])
             ->where('code', $code)

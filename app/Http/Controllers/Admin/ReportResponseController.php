@@ -34,15 +34,21 @@ class ReportResponseController extends Controller
     {
         $validated = $request->validate([
             'message' => ['required', 'string', 'min:3', 'max:2000'],
+            'is_internal' => ['nullable', 'boolean'],
         ]);
+
+        $isInternal = $validated['is_internal'] ?? false;
 
         $report->responses()->create([
             'user_id' => $request->user()->id,
             'message' => $validated['message'],
             'is_admin' => true,
+            'is_internal' => $isInternal,
         ]);
 
-        if (! in_array($report->status, ['selesai', 'ditolak', 'diblokir'], true)) {
+        // Catatan internal nggak mengubah status aduan atau riwayat status,
+        // karena pelapor nggak melihat catatan ini sama sekali.
+        if (! $isInternal && ! in_array($report->status, ['selesai', 'ditolak', 'diblokir'], true)) {
             $report->update(['status' => 'ditanggapi']);
 
             $report->statusHistories()->create([
@@ -52,7 +58,10 @@ class ReportResponseController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'Tanggapan berhasil dikirim.');
+        return redirect()->back()->with(
+            'success',
+            $isInternal ? 'Catatan internal tersimpan.' : 'Tanggapan berhasil dikirim.'
+        );
     }
 
     public function update(Request $request, ReportResponse $response): RedirectResponse

@@ -31,6 +31,7 @@ class DashboardController extends Controller
             'diproses' => (clone $reports)->whereIn('status', ['terkirim', 'diterima', 'diproses', 'ditanggapi'])->count(),
             'selesai' => (clone $reports)->where('status', 'selesai')->count(),
             'ditolak' => (clone $reports)->where('status', 'ditolak')->count(),
+            'diblokir' => (clone $reports)->where('status', 'diblokir')->count(),
         ];
 
         $recentReports = (clone $reports)
@@ -48,9 +49,22 @@ class DashboardController extends Controller
                 'created_at' => $report->created_at->translatedFormat('d M Y, H:i'),
             ]);
 
+        $categoryBreakdown = Category::query()
+            ->withCount(['reports' => fn ($q) => $q->where('user_id', $user->id)])
+            ->get(['id', 'name'])
+            ->filter(fn (Category $category) => $category->reports_count > 0)
+            ->sortByDesc('reports_count')
+            ->take(5)
+            ->values()
+            ->map(fn (Category $category) => [
+                'name' => $category->name,
+                'count' => $category->reports_count,
+            ]);
+
         return Inertia::render('Dashboard', [
             'stats' => $stats,
             'recentReports' => $recentReports,
+            'categoryBreakdown' => $categoryBreakdown,
         ]);
     }
 

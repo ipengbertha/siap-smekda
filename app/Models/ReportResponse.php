@@ -16,11 +16,13 @@ class ReportResponse extends Model
         'message',
         'is_admin',
         'is_featured',
+        'is_internal',
     ];
 
     protected $casts = [
         'is_admin' => 'boolean',
         'is_featured' => 'boolean',
+        'is_internal' => 'boolean',
     ];
 
     public function report(): BelongsTo

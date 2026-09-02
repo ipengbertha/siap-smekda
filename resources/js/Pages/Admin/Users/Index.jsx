@@ -1,24 +1,47 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import AdminLayout from '@/Layouts/AdminLayout';
 import Modal from '@/Components/Modal';
-import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
-import InputError from '@/Components/InputError';
-import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import {
+    UserPlus,
+    Pencil,
+    Power,
+    ShieldAlert,
+    Trash2,
+    Users as UsersIcon,
+    CheckCircle2,
+    AlertCircle,
+} from 'lucide-react';
 
-const statusStyles = {
-    active: 'bg-green-100 text-green-700',
-    inactive: 'bg-gray-100 text-gray-700',
-    blocked: 'bg-red-100 text-red-700',
+const statusStyle = {
+    active: 'bg-emerald-100 text-emerald-700',
+    inactive: 'bg-navy/5 text-navy/50',
+    blocked: 'bg-crimson/10 text-crimson',
 };
 
-const statusLabels = {
+const statusLabel = {
     active: 'Aktif',
     inactive: 'Nonaktif',
     blocked: 'Diblokir',
 };
+
+const roleStyle = {
+    admin: 'bg-purple/15 text-purple',
+    user: 'bg-navy/5 text-navy/60',
+};
+
+function Field({ label, error, children }) {
+    return (
+        <div>
+            <label className="block text-sm font-medium text-navy/70 mb-1.5">{label}</label>
+            {children}
+            {error && <p className="mt-1.5 text-xs text-crimson">{error}</p>}
+        </div>
+    );
+}
+
+const inputClass =
+    'block w-full rounded-xl border-navy/10 bg-navy/[0.02] text-sm text-navy placeholder-gray-400 shadow-sm focus:border-crimson focus:ring-crimson/30 transition-colors';
 
 export default function Index({ users }) {
     const { flash, auth } = usePage().props;
@@ -83,96 +106,124 @@ export default function Index({ users }) {
     };
 
     return (
-        <AuthenticatedLayout
-            header={<h2 className="text-xl font-semibold text-gray-800">Kelola User</h2>}
+        <AdminLayout
+            title="Kelola User"
+            subtitle="Kelola akun pengguna dan admin dashboard."
         >
             <Head title="Kelola User" />
 
-            <div className="py-6">
-                <div className="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    {flash?.success && (
-                        <div className="rounded-md bg-green-50 p-3 text-sm text-green-700">{flash.success}</div>
-                    )}
-                    {flash?.error && (
-                        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{flash.error}</div>
-                    )}
-
-                    <div className="flex justify-end">
-                        <PrimaryButton onClick={openCreate}>+ Tambah User</PrimaryButton>
+            <div className="space-y-5">
+                {flash?.success && (
+                    <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                        <CheckCircle2 size={16} className="shrink-0" />
+                        {flash.success}
                     </div>
+                )}
+                {flash?.error && (
+                    <div className="flex items-center gap-2.5 rounded-xl bg-crimson/10 px-4 py-3 text-sm text-crimson">
+                        <AlertCircle size={16} className="shrink-0" />
+                        {flash.error}
+                    </div>
+                )}
 
-                    <div className="bg-white shadow sm:rounded-lg overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200 text-sm">
-                            <thead className="bg-gray-50">
+                <div className="flex justify-end">
+                    <button
+                        onClick={openCreate}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors"
+                    >
+                        <UserPlus size={15} />
+                        Tambah User
+                    </button>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-sm">
+                            <thead className="bg-navy/[0.03]">
                                 <tr>
-                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Nama</th>
-                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Email</th>
-                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Role</th>
-                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
-                                    <th className="px-4 py-3 text-left font-medium text-gray-500">Aduan</th>
-                                    <th className="px-4 py-3 text-right font-medium text-gray-500">Aksi</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Nama</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Email</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Role</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Status</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Aduan</th>
+                                    <th className="px-4 py-3 text-right font-semibold text-navy/60 text-xs uppercase tracking-wide">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-navy/5">
+                                {users.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-12">
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <UsersIcon className="text-gray-200 mb-3" size={30} />
+                                                <p className="text-sm text-gray-400">Belum ada user.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
                                 {users.map((user) => (
-                                    <tr key={user.id}>
-                                        <td className="px-4 py-3 text-gray-900 font-medium">
+                                    <tr key={user.id} className="hover:bg-navy/[0.02] transition-colors">
+                                        <td className="px-4 py-3 text-navy font-medium">
                                             {user.name}
                                             {user.id === auth.user.id && (
                                                 <span className="ml-1 text-xs text-gray-400">(kamu)</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">{user.email}</td>
+                                        <td className="px-4 py-3 text-gray-500">{user.email}</td>
                                         <td className="px-4 py-3">
-                                            <span className="capitalize px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                                            <span className={`capitalize px-2.5 py-1 rounded-full text-xs font-medium ${roleStyle[user.role] ?? roleStyle.user}`}>
                                                 {user.role}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[user.status]}`}>
-                                                {statusLabels[user.status]}
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle[user.status]}`}>
+                                                {statusLabel[user.status]}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-600">{user.reports_count ?? 0}</td>
+                                        <td className="px-4 py-3 text-gray-500">{user.reports_count ?? 0}</td>
                                         <td className="px-4 py-3">
-                                            <div className="flex justify-end flex-wrap gap-2">
+                                            <div className="flex items-center justify-end gap-1">
                                                 <button
                                                     onClick={() => openEdit(user)}
-                                                    className="text-indigo-600 hover:text-indigo-800"
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-navy/50 hover:bg-navy/5 hover:text-navy transition-colors"
+                                                    title="Edit"
                                                 >
-                                                    Edit
+                                                    <Pencil size={15} />
                                                 </button>
                                                 {user.id !== auth.user.id && (
                                                     <>
                                                         {user.status !== 'active' && (
                                                             <button
                                                                 onClick={() => updateStatus(user, 'active')}
-                                                                className="text-green-600 hover:text-green-800"
+                                                                className="w-8 h-8 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                                                title="Aktifkan"
                                                             >
-                                                                Aktifkan
+                                                                <Power size={15} />
                                                             </button>
                                                         )}
                                                         {user.status !== 'inactive' && (
                                                             <button
                                                                 onClick={() => updateStatus(user, 'inactive')}
-                                                                className="text-yellow-600 hover:text-yellow-800"
+                                                                className="w-8 h-8 rounded-full flex items-center justify-center text-[#8a6d00] hover:bg-gold/20 transition-colors"
+                                                                title="Nonaktifkan"
                                                             >
-                                                                Nonaktifkan
+                                                                <Power size={15} />
                                                             </button>
                                                         )}
                                                         {user.status !== 'blocked' && (
                                                             <button
                                                                 onClick={() => updateStatus(user, 'blocked')}
-                                                                className="text-red-600 hover:text-red-800"
+                                                                className="w-8 h-8 rounded-full flex items-center justify-center text-crimson/60 hover:bg-crimson/10 hover:text-crimson transition-colors"
+                                                                title="Blokir"
                                                             >
-                                                                Blokir
+                                                                <ShieldAlert size={15} />
                                                             </button>
                                                         )}
                                                         <button
                                                             onClick={() => destroy(user)}
-                                                            className="text-red-700 font-medium hover:text-red-900"
+                                                            className="w-8 h-8 rounded-full flex items-center justify-center text-crimson/60 hover:bg-crimson/10 hover:text-crimson transition-colors"
+                                                            title="Hapus"
                                                         >
-                                                            Hapus
+                                                            <Trash2 size={15} />
                                                         </button>
                                                     </>
                                                 )}
@@ -189,70 +240,70 @@ export default function Index({ users }) {
             {/* MODAL TAMBAH USER */}
             <Modal show={showCreate} onClose={() => setShowCreate(false)}>
                 <form onSubmit={submitCreate} className="p-6 space-y-4">
-                    <h2 className="text-lg font-medium text-gray-900">Tambah User Baru</h2>
+                    <h2 className="text-lg font-semibold text-navy">Tambah User Baru</h2>
 
-                    <div>
-                        <InputLabel htmlFor="name" value="Nama" />
-                        <TextInput
-                            id="name"
-                            className="mt-1 block w-full"
+                    <Field label="Nama" error={createForm.errors.name}>
+                        <input
+                            type="text"
                             value={createForm.data.name}
                             onChange={(e) => createForm.setData('name', e.target.value)}
+                            className={inputClass}
                         />
-                        <InputError message={createForm.errors.name} className="mt-1" />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <InputLabel htmlFor="email" value="Email" />
-                        <TextInput
-                            id="email"
+                    <Field label="Email" error={createForm.errors.email}>
+                        <input
                             type="email"
-                            className="mt-1 block w-full"
                             value={createForm.data.email}
                             onChange={(e) => createForm.setData('email', e.target.value)}
+                            className={inputClass}
                         />
-                        <InputError message={createForm.errors.email} className="mt-1" />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <InputLabel htmlFor="password" value="Password" />
-                        <TextInput
-                            id="password"
+                    <Field label="Password" error={createForm.errors.password}>
+                        <input
                             type="password"
-                            className="mt-1 block w-full"
                             value={createForm.data.password}
                             onChange={(e) => createForm.setData('password', e.target.value)}
+                            className={inputClass}
                         />
-                        <InputError message={createForm.errors.password} className="mt-1" />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <InputLabel htmlFor="password_confirmation" value="Konfirmasi Password" />
-                        <TextInput
-                            id="password_confirmation"
+                    <Field label="Konfirmasi Password">
+                        <input
                             type="password"
-                            className="mt-1 block w-full"
                             value={createForm.data.password_confirmation}
                             onChange={(e) => createForm.setData('password_confirmation', e.target.value)}
+                            className={inputClass}
                         />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <InputLabel htmlFor="role" value="Role" />
+                    <Field label="Role">
                         <select
-                            id="role"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                             value={createForm.data.role}
                             onChange={(e) => createForm.setData('role', e.target.value)}
+                            className={inputClass}
                         >
                             <option value="user">User</option>
                             <option value="admin">Admin</option>
                         </select>
-                    </div>
+                    </Field>
 
-                    <div className="flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setShowCreate(false)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={createForm.processing}>Simpan</PrimaryButton>
+                    <div className="flex justify-end gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => setShowCreate(false)}
+                            className="px-5 py-2.5 bg-navy/5 text-navy/70 text-sm font-semibold rounded-full hover:bg-navy/10 transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={createForm.processing}
+                            className="px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors disabled:opacity-50"
+                        >
+                            Simpan
+                        </button>
                     </div>
                 </form>
             </Modal>
@@ -260,53 +311,58 @@ export default function Index({ users }) {
             {/* MODAL EDIT USER */}
             <Modal show={!!editingUser} onClose={() => setEditingUser(null)}>
                 <form onSubmit={submitEdit} className="p-6 space-y-4">
-                    <h2 className="text-lg font-medium text-gray-900">Edit User</h2>
+                    <h2 className="text-lg font-semibold text-navy">Edit User</h2>
 
-                    <div>
-                        <InputLabel htmlFor="edit_name" value="Nama" />
-                        <TextInput
-                            id="edit_name"
-                            className="mt-1 block w-full"
+                    <Field label="Nama" error={editForm.errors.name}>
+                        <input
+                            type="text"
                             value={editForm.data.name}
                             onChange={(e) => editForm.setData('name', e.target.value)}
+                            className={inputClass}
                         />
-                        <InputError message={editForm.errors.name} className="mt-1" />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <InputLabel htmlFor="edit_email" value="Email" />
-                        <TextInput
-                            id="edit_email"
+                    <Field label="Email" error={editForm.errors.email}>
+                        <input
                             type="email"
-                            className="mt-1 block w-full"
                             value={editForm.data.email}
                             onChange={(e) => editForm.setData('email', e.target.value)}
+                            className={inputClass}
                         />
-                        <InputError message={editForm.errors.email} className="mt-1" />
-                    </div>
+                    </Field>
 
-                    <div>
-                        <InputLabel htmlFor="edit_role" value="Role" />
+                    <Field label="Role">
                         <select
-                            id="edit_role"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
                             value={editForm.data.role}
                             onChange={(e) => editForm.setData('role', e.target.value)}
+                            className={inputClass}
                         >
                             <option value="user">User</option>
                             <option value="admin">Admin</option>
                         </select>
-                        <p className="mt-1 text-xs text-gray-400">
+                        <p className="mt-1.5 text-xs text-gray-400">
                             Jadikan "Admin" untuk memberi akses penuh ke dashboard admin.
                         </p>
-                    </div>
+                    </Field>
 
-                    <div className="flex justify-end gap-3">
-                        <SecondaryButton onClick={() => setEditingUser(null)}>Batal</SecondaryButton>
-                        <PrimaryButton disabled={editForm.processing}>Simpan</PrimaryButton>
+                    <div className="flex justify-end gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => setEditingUser(null)}
+                            className="px-5 py-2.5 bg-navy/5 text-navy/70 text-sm font-semibold rounded-full hover:bg-navy/10 transition-colors"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={editForm.processing}
+                            className="px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors disabled:opacity-50"
+                        >
+                            Simpan
+                        </button>
                     </div>
                 </form>
             </Modal>
-        </AuthenticatedLayout>
+        </AdminLayout>
     );
 }
