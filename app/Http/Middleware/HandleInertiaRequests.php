@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AppNotification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,11 +30,54 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
             ],
+            'notifications' => $user ? $this->notificationsFor($user) : null,
+        ];
+    }
+
+    /**
+     * Ringkasan notifikasi buat lonceng di UserLayout: jumlah belum dibaca
+     * (cuma dihitung dari notif pribadi) + beberapa notif terbaru (pribadi + broadcast).
+     */
+    protected function notificationsFor($user): array
+    {
+        $unreadCount = AppNotification::query()
+            ->where('user_id', $user->id)
+            ->where('is_read', false)
+            ->count();
+
+        $items = AppNotification::query()
+            ->visibleTo($user)
+            ->with('report:id,code')
+            ->latest()
+            ->take(8)
+            ->get()
+            ->map(function (AppNotification $n) {
+                $isBroadcast = is_null($n->user_id);
+
+                return [
+                    'id' => $n->id,
+                    'type' => $n->type,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'report_code' => $n->report?->code,
+                    // broadcast nggak punya status baca per-user, jadi ditampilkan
+                    // sebagai info biasa (bukan "belum dibaca").
+                    'is_read' => $isBroadcast ? true : $n->is_read,
+                    'is_broadcast' => $isBroadcast,
+                    'created_at' => $n->created_at->diffForHumans(),
+                ];
+            });
+
+        return [
+            'unread_count' => $unreadCount,
+            'items' => $items,
         ];
     }
 }

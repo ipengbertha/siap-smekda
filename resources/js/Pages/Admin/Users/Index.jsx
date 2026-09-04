@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import Modal from '@/Components/Modal';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
     UserPlus,
     Pencil,
@@ -11,6 +11,7 @@ import {
     Users as UsersIcon,
     CheckCircle2,
     AlertCircle,
+    Search,
 } from 'lucide-react';
 
 const statusStyle = {
@@ -47,6 +48,7 @@ export default function Index({ users }) {
     const { flash, auth } = usePage().props;
     const [showCreate, setShowCreate] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [search, setSearch] = useState('');
 
     const createForm = useForm({
         name: '',
@@ -105,6 +107,18 @@ export default function Index({ users }) {
         }
     };
 
+    // Filter di sisi klien — nyari berdasarkan nama, username, atau email.
+    const filteredUsers = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return users;
+        return users.filter(
+            (u) =>
+                u.name.toLowerCase().includes(q) ||
+                (u.username ?? '').toLowerCase().includes(q) ||
+                u.email.toLowerCase().includes(q)
+        );
+    }, [users, search]);
+
     return (
         <AdminLayout
             title="Kelola User"
@@ -126,10 +140,20 @@ export default function Index({ users }) {
                     </div>
                 )}
 
-                <div className="flex justify-end">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                    <div className="relative sm:max-w-xs w-full">
+                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Cari nama, username, atau email..."
+                            className={`${inputClass} pl-10`}
+                        />
+                    </div>
                     <button
                         onClick={openCreate}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors shrink-0"
                     >
                         <UserPlus size={15} />
                         Tambah User
@@ -142,6 +166,7 @@ export default function Index({ users }) {
                             <thead className="bg-navy/[0.03]">
                                 <tr>
                                     <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Nama</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Username</th>
                                     <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Email</th>
                                     <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Role</th>
                                     <th className="px-4 py-3 text-left font-semibold text-navy/60 text-xs uppercase tracking-wide">Status</th>
@@ -152,7 +177,7 @@ export default function Index({ users }) {
                             <tbody className="divide-y divide-navy/5">
                                 {users.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="px-4 py-12">
+                                        <td colSpan={7} className="px-4 py-12">
                                             <div className="flex flex-col items-center justify-center text-center">
                                                 <UsersIcon className="text-gray-200 mb-3" size={30} />
                                                 <p className="text-sm text-gray-400">Belum ada user.</p>
@@ -160,13 +185,28 @@ export default function Index({ users }) {
                                         </td>
                                     </tr>
                                 )}
-                                {users.map((user) => (
+                                {users.length > 0 && filteredUsers.length === 0 && (
+                                    <tr>
+                                        <td colSpan={7} className="px-4 py-12">
+                                            <div className="flex flex-col items-center justify-center text-center">
+                                                <Search className="text-gray-200 mb-3" size={30} />
+                                                <p className="text-sm text-gray-400">
+                                                    Nggak ada user yang cocok dengan &quot;{search}&quot;.
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                                {filteredUsers.map((user) => (
                                     <tr key={user.id} className="hover:bg-navy/[0.02] transition-colors">
                                         <td className="px-4 py-3 text-navy font-medium">
                                             {user.name}
                                             {user.id === auth.user.id && (
                                                 <span className="ml-1 text-xs text-gray-400">(kamu)</span>
                                             )}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-500">
+                                            {user.username ? `@${user.username}` : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-gray-500">{user.email}</td>
                                         <td className="px-4 py-3">

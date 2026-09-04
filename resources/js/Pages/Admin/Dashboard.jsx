@@ -1,15 +1,15 @@
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     Inbox,
     Clock,
     CheckCircle2,
+    XCircle,
+    ShieldAlert,
     Users,
     ArrowRight,
     Tag,
-    MapPin,
     MessageSquare,
-    ShieldAlert,
 } from 'lucide-react';
 
 const statusLabel = {
@@ -70,7 +70,9 @@ function QuickLink({ href, label, icon: Icon, iconBg, iconColor }) {
     );
 }
 
-export default function AdminDashboard({ stats, recentReports, categoryBreakdown }) {
+export default function Dashboard() {
+    const { stats, recentReports, categoryBreakdown } = usePage().props;
+
     const total = stats.total || 0;
     const selesaiPct = total ? Math.round((stats.selesai / total) * 100) : 0;
     const maxCategory = categoryBreakdown?.length
@@ -87,18 +89,21 @@ export default function AdminDashboard({ stats, recentReports, categoryBreakdown
     return (
         <AdminLayout
             title="Dashboard Admin"
-            subtitle="Ringkasan seluruh aduan dan aspirasi yang masuk ke SIAP SMEKDA."
+            subtitle="Ringkasan seluruh aduan & aspirasi yang masuk ke sistem."
         >
             <Head title="Dashboard Admin" />
 
-            {/* Stat cards pastel — mirip kartu berwarna di board */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
-                <PastelStat label="Total Aduan" value={stats.total} icon={Inbox} bg="bg-purple/10" iconBg="bg-purple/20" iconColor="text-purple" />
-                <PastelStat label="Aduan Baru" value={stats.baru} icon={Clock} bg="bg-gold/10" iconBg="bg-gold/25" iconColor="text-[#8a6d00]" />
-                <PastelStat label="Diproses" value={stats.diproses} icon={Clock} bg="bg-blue-50" iconBg="bg-blue-100" iconColor="text-blue-500" />
+            {/* Stat cards pastel */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                <PastelStat label="Total Laporan" value={stats.total} icon={Inbox} bg="bg-purple/10" iconBg="bg-purple/20" iconColor="text-purple" />
+                <PastelStat label="Laporan Baru" value={stats.baru} icon={Inbox} bg="bg-navy/5" iconBg="bg-navy/10" iconColor="text-navy" />
+                <PastelStat label="Sedang Diproses" value={stats.diproses} icon={Clock} bg="bg-gold/10" iconBg="bg-gold/25" iconColor="text-[#8a6d00]" />
                 <PastelStat label="Selesai" value={stats.selesai} icon={CheckCircle2} bg="bg-emerald-50" iconBg="bg-emerald-100" iconColor="text-emerald-600" />
-                <PastelStat label="Ditolak" value={stats.ditolak} icon={ShieldAlert} bg="bg-crimson/10" iconBg="bg-crimson/15" iconColor="text-crimson" />
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-8">
+                <PastelStat label="Ditolak" value={stats.ditolak} icon={XCircle} bg="bg-crimson/10" iconBg="bg-crimson/15" iconColor="text-crimson" />
                 <PastelStat label="Diblokir" value={stats.diblokir} icon={ShieldAlert} bg="bg-navy/5" iconBg="bg-navy/10" iconColor="text-navy" />
+                <PastelStat label="Total User" value={stats.total_users} icon={Users} bg="bg-purple/10" iconBg="bg-purple/20" iconColor="text-purple" />
             </div>
 
             {/* Board-style columns */}
@@ -138,10 +143,10 @@ export default function AdminDashboard({ stats, recentReports, categoryBreakdown
                     </div>
                 </div>
 
-                {/* Kategori teratas */}
+                {/* Kategori laporan */}
                 <div className="bg-navy/[0.03] rounded-2xl p-4">
-                    <ColumnHeader label="Kategori Teratas" dot="bg-purple" />
-                    <div className="bg-white rounded-2xl p-5 shadow-sm">
+                    <ColumnHeader label="Kategori Laporan" dot="bg-purple" />
+                    <div className="bg-white rounded-2xl p-5 shadow-sm h-[calc(100%-2.75rem)]">
                         {categoryBreakdown?.length > 0 ? (
                             <div className="space-y-4">
                                 {categoryBreakdown.map((c, i) => (
@@ -160,18 +165,11 @@ export default function AdminDashboard({ stats, recentReports, categoryBreakdown
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-gray-400">Belum ada data kategori.</p>
+                            <div className="h-full flex flex-col items-center justify-center text-center py-8">
+                                <Inbox className="text-gray-200 mb-3" size={30} />
+                                <p className="text-gray-400 text-sm">Belum ada laporan buat ditampilin di sini.</p>
+                            </div>
                         )}
-
-                        <div className="flex items-center gap-3 mt-6 pt-5 border-t border-navy/5">
-                            <div className="w-9 h-9 rounded-full bg-navy/5 flex items-center justify-center shrink-0">
-                                <Users size={16} className="text-navy" />
-                            </div>
-                            <div>
-                                <p className="text-navy font-bold leading-none">{stats.total_users}</p>
-                                <p className="text-gray-400 text-xs mt-1">Total user terdaftar</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -219,16 +217,13 @@ export default function AdminDashboard({ stats, recentReports, categoryBreakdown
                 </div>
             </div>
 
-            {/* Kelola */}
+            {/* Menu cepat */}
             <div>
-                <h2 className="font-semibold text-navy mb-4">Kelola</h2>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <h2 className="font-semibold text-navy mb-4">Menu Cepat</h2>
+                <div className="grid sm:grid-cols-3 gap-3">
                     <QuickLink href={route('admin.reports.index')} label="Kelola Aduan" icon={Inbox} iconBg="bg-crimson/10" iconColor="text-crimson" />
                     <QuickLink href={route('admin.responses.index')} label="Kelola Tanggapan" icon={MessageSquare} iconBg="bg-purple/15" iconColor="text-purple" />
                     <QuickLink href={route('admin.categories.index')} label="Kelola Kategori" icon={Tag} iconBg="bg-gold/20" iconColor="text-[#8a6d00]" />
-                    <QuickLink href={route('admin.destinations.index')} label="Kelola Tujuan" icon={MapPin} iconBg="bg-emerald-100" iconColor="text-emerald-600" />
-                    <QuickLink href={route('admin.banned-words.index')} label="Kata Terlarang" icon={ShieldAlert} iconBg="bg-navy/10" iconColor="text-navy" />
-                    <QuickLink href={route('admin.users.index')} label="Kelola User" icon={Users} iconBg="bg-purple/15" iconColor="text-purple" />
                 </div>
             </div>
         </AdminLayout>

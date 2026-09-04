@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\Admin\LandingStatController;
@@ -33,6 +34,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/aduan', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/aduan/buat', [ReportController::class, 'create'])->name('reports.create');
     Route::post('/aduan', [ReportController::class, 'store'])->name('reports.store');
+
+    // Notifikasi
+    Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::patch('/notifikasi/{notification}/baca', [NotificationController::class, 'read'])->name('notifications.read');
+    Route::post('/notifikasi/baca-semua', [NotificationController::class, 'readAll'])->name('notifications.read-all');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {

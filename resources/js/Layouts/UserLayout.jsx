@@ -4,15 +4,6 @@ import Dropdown from '@/Components/Dropdown';
 import NotificationBell from '@/Components/NotificationBell';
 import {
     LayoutDashboard,
-    Inbox,
-    MessageSquare,
-    Tag,
-    MapPin,
-    ShieldAlert,
-    Users,
-    Settings,
-    BarChart3,
-    HelpCircle,
     ListChecks,
     Search,
     Menu,
@@ -20,6 +11,7 @@ import {
     ChevronDown,
     Mail,
     Phone,
+    MapPin,
     Link2,
 } from 'lucide-react';
 
@@ -57,25 +49,13 @@ function SidebarContent({ current, actions }) {
 
             <NavGroup label="Menu">
                 <NavItem href={route('dashboard')} icon={LayoutDashboard} label="Dashboard" active={current('dashboard')} />
+                <NavItem href={route('reports.index')} icon={ListChecks} label="Laporan Saya" active={current('reports.index')} />
+                {/* active hanya untuk halaman pencarian (track.index), BUKAN track.* —
+                    supaya nggak ikut nyala saat masuk ke detail (track.show) lewat klik baris "Laporan Saya" */}
+                <NavItem href={route('track.index')} icon={Search} label="Lacak Aduan Lain" active={current('track.index')} />
             </NavGroup>
 
-            <NavGroup label="Landing Page">
-                <NavItem href={route('admin.landing.settings')} icon={Settings} label="Pengaturan Umum" active={current('admin.landing.settings')} />
-                <NavItem href={route('admin.landing.stats')} icon={BarChart3} label="Statistik" active={current('admin.landing.stats')} />
-                <NavItem href={route('admin.landing.faqs')} icon={HelpCircle} label="FAQ" active={current('admin.landing.faqs')} />
-                <NavItem href={route('admin.landing.steps')} icon={ListChecks} label="Cara Kerja" active={current('admin.landing.steps')} />
-            </NavGroup>
-
-            <NavGroup label="Kelola">
-                <NavItem href={route('admin.reports.index')} icon={Inbox} label="Kelola Aduan" active={current('admin.reports.*')} />
-                <NavItem href={route('admin.responses.index')} icon={MessageSquare} label="Kelola Tanggapan" active={current('admin.responses.*')} />
-                <NavItem href={route('admin.categories.index')} icon={Tag} label="Kelola Kategori" active={current('admin.categories.*')} />
-                <NavItem href={route('admin.destinations.index')} icon={MapPin} label="Kelola Tujuan" active={current('admin.destinations.*')} />
-                <NavItem href={route('admin.banned-words.index')} icon={ShieldAlert} label="Kata Terlarang" active={current('admin.banned-words.*')} />
-                <NavItem href={route('admin.users.index')} icon={Users} label="Kelola User" active={current('admin.users.*')} />
-            </NavGroup>
-
-            {/* Slot aksi halaman — dulu di topbar, sekarang di bawah sidebar */}
+            {/* Slot aksi halaman — CTA utama "Buat Aduan" */}
             {actions && (
                 <div className="mt-auto pt-4 border-t border-white/10">
                     {actions}
@@ -110,7 +90,7 @@ function AccountControl({ user }) {
     );
 }
 
-function AdminFooter() {
+function UserFooter() {
     return (
         <div className="bg-gradient-to-br from-navy via-navy-light to-navy px-6 sm:px-12 py-12">
             <div className="max-w-[1400px] mx-auto">
@@ -159,7 +139,7 @@ function AdminFooter() {
     );
 }
 
-export default function AdminLayout({ title, subtitle, actions, children }) {
+export default function UserLayout({ title, subtitle, headerAction, showSearch = true, children }) {
     const user = usePage().props.auth.user;
     const current = (pattern) => route().current(pattern);
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -173,7 +153,7 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                     <div className="absolute top-[-20%] right-[-30%] w-56 h-56 bg-crimson/25 rounded-full blur-[80px] pointer-events-none" />
                     <div className="absolute bottom-[-10%] left-[-20%] w-48 h-48 bg-gold/15 rounded-full blur-[80px] pointer-events-none" />
                     <div className="relative flex flex-col flex-1">
-                        <SidebarContent current={current} actions={actions} />
+                        <SidebarContent current={current} />
                     </div>
                 </aside>
 
@@ -187,7 +167,7 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                                 <X size={20} />
                             </button>
                             <div className="relative flex flex-col flex-1">
-                                <SidebarContent current={current} actions={actions} />
+                                <SidebarContent current={current} />
                             </div>
                         </aside>
                     </div>
@@ -206,14 +186,16 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                             <h1 className="font-sans font-bold text-lg text-navy truncate">{user.name}</h1>
                         </div>
 
-                        <div className="hidden md:flex items-center gap-2 bg-navy/5 rounded-full px-4 py-2 w-72 ml-4">
-                            <Search size={15} className="text-gray-400 shrink-0" />
-                            <input
-                                type="text"
-                                placeholder="Cari kode aduan..."
-                                className="flex-1 border-0 bg-transparent focus:ring-0 text-sm text-navy placeholder-gray-400 p-0"
-                            />
-                        </div>
+                        {showSearch && (
+                            <div className="hidden md:flex items-center gap-2 bg-navy/5 rounded-full px-4 py-2 w-72 ml-4">
+                                <Search size={15} className="text-gray-400 shrink-0" />
+                                <input
+                                    type="text"
+                                    placeholder="Cari kode aduan..."
+                                    className="flex-1 border-0 bg-transparent focus:ring-0 text-sm text-navy placeholder-gray-400 p-0"
+                                />
+                            </div>
+                        )}
 
                         <div className="ml-auto flex items-center gap-3">
                             <NotificationBell />
@@ -223,10 +205,13 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
 
                     {/* Page heading + content */}
                     <div className="flex-1 px-5 sm:px-8 py-6 overflow-y-auto">
-                        {(title || subtitle) && (
-                            <div className="mb-6">
-                                {title && <h2 className="font-sans font-extrabold text-2xl text-navy">{title}</h2>}
-                                {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+                        {(title || subtitle || headerAction) && (
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                                <div>
+                                    {title && <h2 className="font-sans font-extrabold text-2xl text-navy">{title}</h2>}
+                                    {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+                                </div>
+                                {headerAction && <div className="shrink-0">{headerAction}</div>}
                             </div>
                         )}
                         {children}
@@ -235,15 +220,14 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                     {/* Footer — dalam card */}
                     <div className="px-5 sm:px-8 py-4 border-t border-navy/5 text-center">
                         <p className="text-xs text-navy/40">
-                            &copy; {new Date().getFullYear()} SIAP SMEKDA &middot; Dashboard Admin
+                            &copy; {new Date().getFullYear()} SIAP SMEKDA &middot; Dashboard
                         </p>
                     </div>
                 </div>
             </div>
-
         </div>
 
-        <AdminFooter />
+        <UserFooter />
         </>
     );
 }

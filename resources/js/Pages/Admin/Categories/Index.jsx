@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { Pencil, Power, Trash2, Check, X, Tag, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Pencil, Power, Trash2, Check, X, Tag, CheckCircle2, AlertCircle, Search } from 'lucide-react';
 
 function SectionCard({ label, dot, description, children }) {
     return (
@@ -34,6 +34,7 @@ const inputClass =
 export default function Index({ categories }) {
     const { flash } = usePage().props;
     const [editingId, setEditingId] = useState(null);
+    const [search, setSearch] = useState('');
 
     const createForm = useForm({ name: '', description: '' });
     const editForm = useForm({ name: '', description: '', is_active: true });
@@ -70,6 +71,17 @@ export default function Index({ categories }) {
             router.delete(route('admin.categories.destroy', category.id), { preserveScroll: true });
         }
     };
+
+    // Filter di sisi klien — jumlah kategori biasanya kecil, jadi nggak perlu round-trip ke server.
+    const filteredCategories = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return categories;
+        return categories.filter(
+            (c) =>
+                c.name.toLowerCase().includes(q) ||
+                (c.description ?? '').toLowerCase().includes(q)
+        );
+    }, [categories, search]);
 
     return (
         <AdminLayout
@@ -124,20 +136,39 @@ export default function Index({ categories }) {
 
                 {/* DAFTAR KATEGORI */}
                 <SectionCard label="Daftar Kategori" dot="bg-purple">
+                    {/* Search bar */}
+                    <div className="relative mb-4">
+                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Cari kategori..."
+                            className={`${inputClass} pl-10`}
+                        />
+                    </div>
+
                     {categories.length === 0 ? (
                         <div className="flex flex-col items-center justify-center text-center py-10">
                             <Tag className="text-gray-200 mb-3" size={30} />
                             <p className="text-sm text-gray-400">Belum ada kategori.</p>
                         </div>
+                    ) : filteredCategories.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center py-10">
+                            <Search className="text-gray-200 mb-3" size={30} />
+                            <p className="text-sm text-gray-400">
+                                Nggak ada kategori yang cocok dengan &quot;{search}&quot;.
+                            </p>
+                        </div>
                     ) : (
                         <div className="space-y-2">
-                            {categories.map((category) => (
+                            {filteredCategories.map((category) => (
                                 <div
                                     key={category.id}
-                                    className="rounded-xl border border-navy/5 p-3 sm:p-4 flex gap-3 hover:border-crimson/20 transition-colors"
+                                    className="rounded-xl border border-navy/5 px-3 sm:px-4 py-2.5 hover:border-crimson/20 transition-colors"
                                 >
                                     {editingId === category.id ? (
-                                        <form onSubmit={(e) => submitEdit(e, category.id)} className="flex-1 space-y-3">
+                                        <form onSubmit={(e) => submitEdit(e, category.id)} className="space-y-3">
                                             <Field error={editForm.errors.name}>
                                                 <input
                                                     type="text"
@@ -181,24 +212,22 @@ export default function Index({ categories }) {
                                             </div>
                                         </form>
                                     ) : (
-                                        <>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-navy">
-                                                    {category.name}{' '}
-                                                    {!category.is_active && (
-                                                        <span className="ml-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-crimson/10 text-crimson">
-                                                            Nonaktif
-                                                        </span>
-                                                    )}
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                                                <p className="font-semibold text-navy shrink-0">
+                                                    {category.name}
                                                 </p>
-                                                {category.description && (
-                                                    <p className="text-sm text-gray-500 mt-1">{category.description}</p>
+                                                {!category.is_active && (
+                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-crimson/10 text-crimson shrink-0">
+                                                        Nonaktif
+                                                    </span>
                                                 )}
-                                                <p className="text-xs text-gray-400 mt-1.5">
-                                                    {category.reports_count ?? 0} aduan memakai kategori ini
+                                                <p className="text-xs text-gray-400 truncate">
+                                                    {category.description && `${category.description} · `}
+                                                    {category.reports_count ?? 0} aduan
                                                 </p>
                                             </div>
-                                            <div className="flex flex-col gap-1 shrink-0">
+                                            <div className="flex items-center gap-1 shrink-0">
                                                 <button
                                                     onClick={() => startEdit(category)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-navy/50 hover:bg-navy/5 hover:text-navy transition-colors"
@@ -221,7 +250,7 @@ export default function Index({ categories }) {
                                                     <Trash2 size={15} />
                                                 </button>
                                             </div>
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             ))}

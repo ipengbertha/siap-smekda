@@ -60,6 +60,16 @@ class User extends Authenticatable
         return $this->hasMany(ReportResponse::class);
     }
 
+    /**
+     * Notifikasi pribadi milik user ini (dari tabel "notifications" / model AppNotification).
+     * Sengaja dinamai "appNotifications", bukan "notifications", karena trait Notifiable
+     * di atas sudah punya method notifications() sendiri (buat notifikasi bawaan Laravel).
+     */
+    public function appNotifications(): HasMany
+    {
+        return $this->hasMany(AppNotification::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

@@ -1,7 +1,7 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, useForm, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { Pencil, Power, Trash2, Check, X, MapPin, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Pencil, Power, Trash2, Check, X, MapPin, CheckCircle2, AlertCircle, Search } from 'lucide-react';
 
 function SectionCard({ label, dot, description, children }) {
     return (
@@ -34,6 +34,7 @@ const inputClass =
 export default function Index({ destinations }) {
     const { flash } = usePage().props;
     const [editingId, setEditingId] = useState(null);
+    const [search, setSearch] = useState('');
 
     const createForm = useForm({ name: '', description: '' });
     const editForm = useForm({ name: '', description: '', is_active: true });
@@ -70,6 +71,17 @@ export default function Index({ destinations }) {
             router.delete(route('admin.destinations.destroy', destination.id), { preserveScroll: true });
         }
     };
+
+    // Filter di sisi klien — jumlah tujuan biasanya kecil, jadi nggak perlu round-trip ke server.
+    const filteredDestinations = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return destinations;
+        return destinations.filter(
+            (d) =>
+                d.name.toLowerCase().includes(q) ||
+                (d.description ?? '').toLowerCase().includes(q)
+        );
+    }, [destinations, search]);
 
     return (
         <AdminLayout
@@ -124,20 +136,39 @@ export default function Index({ destinations }) {
 
                 {/* DAFTAR TUJUAN */}
                 <SectionCard label="Daftar Tujuan" dot="bg-purple">
+                    {/* Search bar */}
+                    <div className="relative mb-4">
+                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Cari tujuan..."
+                            className={`${inputClass} pl-10`}
+                        />
+                    </div>
+
                     {destinations.length === 0 ? (
                         <div className="flex flex-col items-center justify-center text-center py-10">
                             <MapPin className="text-gray-200 mb-3" size={30} />
                             <p className="text-sm text-gray-400">Belum ada tujuan.</p>
                         </div>
+                    ) : filteredDestinations.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center py-10">
+                            <Search className="text-gray-200 mb-3" size={30} />
+                            <p className="text-sm text-gray-400">
+                                Nggak ada tujuan yang cocok dengan &quot;{search}&quot;.
+                            </p>
+                        </div>
                     ) : (
                         <div className="space-y-2">
-                            {destinations.map((destination) => (
+                            {filteredDestinations.map((destination) => (
                                 <div
                                     key={destination.id}
-                                    className="rounded-xl border border-navy/5 p-3 sm:p-4 flex gap-3 hover:border-crimson/20 transition-colors"
+                                    className="rounded-xl border border-navy/5 px-3 sm:px-4 py-2.5 hover:border-crimson/20 transition-colors"
                                 >
                                     {editingId === destination.id ? (
-                                        <form onSubmit={(e) => submitEdit(e, destination.id)} className="flex-1 space-y-3">
+                                        <form onSubmit={(e) => submitEdit(e, destination.id)} className="space-y-3">
                                             <Field error={editForm.errors.name}>
                                                 <input
                                                     type="text"
@@ -181,24 +212,22 @@ export default function Index({ destinations }) {
                                             </div>
                                         </form>
                                     ) : (
-                                        <>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold text-navy">
-                                                    {destination.name}{' '}
-                                                    {!destination.is_active && (
-                                                        <span className="ml-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-crimson/10 text-crimson">
-                                                            Nonaktif
-                                                        </span>
-                                                    )}
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                                                <p className="font-semibold text-navy shrink-0">
+                                                    {destination.name}
                                                 </p>
-                                                {destination.description && (
-                                                    <p className="text-sm text-gray-500 mt-1">{destination.description}</p>
+                                                {!destination.is_active && (
+                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-crimson/10 text-crimson shrink-0">
+                                                        Nonaktif
+                                                    </span>
                                                 )}
-                                                <p className="text-xs text-gray-400 mt-1.5">
-                                                    {destination.reports_count ?? 0} aduan mengarah ke tujuan ini
+                                                <p className="text-xs text-gray-400 truncate">
+                                                    {destination.description && `${destination.description} · `}
+                                                    {destination.reports_count ?? 0} aduan
                                                 </p>
                                             </div>
-                                            <div className="flex flex-col gap-1 shrink-0">
+                                            <div className="flex items-center gap-1 shrink-0">
                                                 <button
                                                     onClick={() => startEdit(destination)}
                                                     className="w-8 h-8 rounded-full flex items-center justify-center text-navy/50 hover:bg-navy/5 hover:text-navy transition-colors"
@@ -221,7 +250,7 @@ export default function Index({ destinations }) {
                                                     <Trash2 size={15} />
                                                 </button>
                                             </div>
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             ))}
