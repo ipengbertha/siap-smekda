@@ -1,0 +1,412 @@
+diff --git a/app/Http/Controllers/NotificationController.php b/app/Http/Controllers/NotificationController.php
+index c46fbfb..7177063 100644
+--- a/app/Http/Controllers/NotificationController.php
++++ b/app/Http/Controllers/NotificationController.php
+@@ -9,14 +9,31 @@
+ class NotificationController extends Controller
+ {
+     /**
+-     * Daftar notifikasi milik user (dipakai kalau nanti ada halaman "Semua Notifikasi").
++     * Halaman "Semua Notifikasi" — daftar lengkap & berpaginasi milik user ini.
+      */
+     public function index(Request $request)
+     {
+         $notifications = AppNotification::query()
+             ->visibleTo($request->user())
++            ->with('report:id,code')
+             ->latest()
+-            ->paginate(20);
++            ->paginate(20)
++            ->withQueryString()
++            ->through(function (AppNotification $n) {
++                $isBroadcast = is_null($n->user_id);
++
++                return [
++                    'id' => $n->id,
++                    'type' => $n->type,
++                    'title' => $n->title,
++                    'message' => $n->message,
++                    'report_id' => $n->report?->id,
++                    'report_code' => $n->report?->code,
++                    'is_read' => $isBroadcast ? true : $n->is_read,
++                    'is_broadcast' => $isBroadcast,
++                    'created_at' => $n->created_at->diffForHumans(),
++                ];
++            });
+ 
+         return inertia('Notification/Index', [
+             'notifications' => $notifications,
+diff --git a/notification-triggers.patch b/notification-triggers.patch
+deleted file mode 100644
+index 2b33901..0000000
+--- a/notification-triggers.patch
++++ /dev/null
+@@ -1,208 +0,0 @@
+-diff --git a/app/Http/Controllers/Admin/ReportController.php b/app/Http/Controllers/Admin/ReportController.php
+-index 7657c8a..825bc30 100644
+---- a/app/Http/Controllers/Admin/ReportController.php
+-+++ b/app/Http/Controllers/Admin/ReportController.php
+-@@ -6,6 +6,7 @@
+- use App\Models\Category;
+- use App\Models\Destination;
+- use App\Models\Report;
+-+use App\Services\NotificationService;
+- use Illuminate\Http\RedirectResponse;
+- use Illuminate\Http\Request;
+- use Inertia\Inertia;
+-@@ -74,6 +75,8 @@ public function updateStatus(Request $request, Report $report): RedirectResponse
+-             'destination_id' => ['nullable', 'exists:destinations,id'],
+-         ]);
+- 
+-+        $statusChanged = $report->status !== $validated['status'];
+-+
+-         $report->update([
+-             'status' => $validated['status'],
+-             'destination_id' => $validated['destination_id'] ?? $report->destination_id,
+-@@ -85,6 +88,12 @@ public function updateStatus(Request $request, Report $report): RedirectResponse
+-             'changed_by' => $request->user()->id,
+-         ]);
+- 
+-+        // Cuma kirim notif kalau statusnya beneran berubah — hindari spam kalau
+-+        // admin klik simpan tanpa ganti status (mis. cuma mau nambah note/destination).
+-+        if ($statusChanged) {
+-+            NotificationService::reportStatusChanged($report, $validated['status']);
+-+        }
+-+
+-         return redirect()->back()->with('success', 'Status aduan berhasil diperbarui.');
+-     }
+- 
+-diff --git a/app/Http/Controllers/Admin/ReportResponseController.php b/app/Http/Controllers/Admin/ReportResponseController.php
+-index 4aa24d5..81ad550 100644
+---- a/app/Http/Controllers/Admin/ReportResponseController.php
+-+++ b/app/Http/Controllers/Admin/ReportResponseController.php
+-@@ -5,6 +5,7 @@
+- use App\Http\Controllers\Controller;
+- use App\Models\Report;
+- use App\Models\ReportResponse;
+-+use App\Services\NotificationService;
+- use Illuminate\Http\RedirectResponse;
+- use Illuminate\Http\Request;
+- use Inertia\Inertia;
+-@@ -58,6 +59,12 @@ public function store(Request $request, Report $report): RedirectResponse
+-             ]);
+-         }
+- 
+-+        // Notif "ada tanggapan baru" aja, bukan notif status — biar pelapor nggak
+-+        // dapet 2 notif buat 1 aksi (status di atas cuma efek samping teknis).
+-+        if (! $isInternal) {
+-+            NotificationService::reportResponded($report);
+-+        }
+-+
+-         return redirect()->back()->with(
+-             'success',
+-             $isInternal ? 'Catatan internal tersimpan.' : 'Tanggapan berhasil dikirim.'
+-diff --git a/app/Http/Controllers/ReportController.php b/app/Http/Controllers/ReportController.php
+-index 563ad8e..e16c937 100644
+---- a/app/Http/Controllers/ReportController.php
+-+++ b/app/Http/Controllers/ReportController.php
+-@@ -5,6 +5,7 @@
+- use App\Http\Requests\StoreReportRequest;
+- use App\Models\Category;
+- use App\Models\Report;
+-+use App\Services\NotificationService;
+- use Illuminate\Http\RedirectResponse;
+- use Illuminate\Support\Facades\Storage;
+- use Inertia\Inertia;
+-@@ -54,6 +55,8 @@ public function store(StoreReportRequest $request): RedirectResponse
+-             'changed_by' => null,
+-         ]);
+- 
+-+        NotificationService::newReportSubmitted($report);
+-+
+-         return redirect()
+-             ->route('reports.index')
+-             ->with('success', "Aduan berhasil dikirim dengan kode {$report->code}");
+-diff --git a/app/Http/Middleware/HandleInertiaRequests.php b/app/Http/Middleware/HandleInertiaRequests.php
+-index 9529afd..83130b0 100644
+---- a/app/Http/Middleware/HandleInertiaRequests.php
+-+++ b/app/Http/Middleware/HandleInertiaRequests.php
+-@@ -66,6 +66,7 @@ protected function notificationsFor($user): array
+-                     'type' => $n->type,
+-                     'title' => $n->title,
+-                     'message' => $n->message,
+-+                    'report_id' => $n->report?->id,
+-                     'report_code' => $n->report?->code,
+-                     // broadcast nggak punya status baca per-user, jadi ditampilkan
+-                     // sebagai info biasa (bukan "belum dibaca").
+-diff --git a/app/Services/NotificationService.php b/app/Services/NotificationService.php
+-new file mode 100644
+-index 0000000..33207ab
+---- /dev/null
+-+++ b/app/Services/NotificationService.php
+-@@ -0,0 +1,85 @@
+-+<?php
+-+
+-+namespace App\Services;
+-+
+-+use App\Models\AppNotification;
+-+use App\Models\Report;
+-+use App\Models\User;
+-+
+-+class NotificationService
+-+{
+-+    protected const STATUS_LABELS = [
+-+        'terkirim' => 'terkirim',
+-+        'diterima' => 'diterima',
+-+        'diproses' => 'sedang diproses',
+-+        'ditanggapi' => 'ditanggapi',
+-+        'selesai' => 'selesai',
+-+        'ditolak' => 'ditolak',
+-+        'diblokir' => 'diblokir',
+-+    ];
+-+
+-+    /**
+-+     * Kirim notif ke pelapor saat admin mengubah status laporannya.
+-+     * Dipanggil dari Admin\ReportController@updateStatus.
+-+     */
+-+    public static function reportStatusChanged(Report $report, string $newStatus): void
+-+    {
+-+        // Kalau nggak ada user_id (harusnya nggak mungkin, tapi jaga-jaga), skip.
+-+        if (! $report->user_id) {
+-+            return;
+-+        }
+-+
+-+        $label = self::STATUS_LABELS[$newStatus] ?? $newStatus;
+-+
+-+        AppNotification::create([
+-+            'user_id' => $report->user_id,
+-+            'type' => 'sistem',
+-+            'title' => 'Status laporan diperbarui',
+-+            'message' => "Laporan \"{$report->title}\" ({$report->code}) sekarang berstatus \"{$label}\".",
+-+            'report_id' => $report->id,
+-+        ]);
+-+    }
+-+
+-+    /**
+-+     * Kirim notif ke pelapor saat admin memberi tanggapan publik (bukan catatan internal).
+-+     * Dipanggil dari Admin\ReportResponseController@store.
+-+     */
+-+    public static function reportResponded(Report $report): void
+-+    {
+-+        if (! $report->user_id) {
+-+            return;
+-+        }
+-+
+-+        AppNotification::create([
+-+            'user_id' => $report->user_id,
+-+            'type' => 'sistem',
+-+            'title' => 'Ada tanggapan baru',
+-+            'message' => "Admin memberikan tanggapan pada laporan \"{$report->title}\" ({$report->code}).",
+-+            'report_id' => $report->id,
+-+        ]);
+-+    }
+-+
+-+    /**
+-+     * Kirim notif ke semua admin saat ada laporan baru masuk.
+-+     * Dipanggil dari ReportController@store (sisi user).
+-+     */
+-+    public static function newReportSubmitted(Report $report): void
+-+    {
+-+        $admins = User::where('role', 'admin')->get(['id']);
+-+
+-+        $rows = $admins->map(fn (User $admin) => [
+-+            'user_id' => $admin->id,
+-+            'type' => 'sistem',
+-+            'title' => 'Laporan baru masuk',
+-+            'message' => "Laporan baru \"{$report->title}\" ({$report->code}) perlu ditindaklanjuti.",
+-+            'report_id' => $report->id,
+-+            'is_read' => false,
+-+            'created_at' => now(),
+-+            'updated_at' => now(),
+-+        ]);
+-+
+-+        if ($rows->isNotEmpty()) {
+-+            AppNotification::insert($rows->toArray());
+-+        }
+-+    }
+-+}
+-diff --git a/resources/js/Components/NotificationBell.jsx b/resources/js/Components/NotificationBell.jsx
+-index b0e1369..51483f2 100644
+---- a/resources/js/Components/NotificationBell.jsx
+-+++ b/resources/js/Components/NotificationBell.jsx
+-@@ -3,7 +3,8 @@ import { Bell, Inbox, CheckCheck, Megaphone } from 'lucide-react';
+- import Dropdown from '@/Components/Dropdown';
+- 
+- export default function NotificationBell() {
+--    const { notifications } = usePage().props;
+-+    const { notifications, auth } = usePage().props;
+-+    const isAdmin = auth?.user?.role === 'admin';
+- 
+-     // Kalau shared prop belum ada (mis. HandleInertiaRequests belum diupdate), jangan crash.
+-     const unreadCount = notifications?.unread_count ?? 0;
+-@@ -22,7 +23,9 @@ export default function NotificationBell() {
+-         if (!item.is_broadcast && !item.is_read) {
+-             markRead(item.id);
+-         }
+--        if (item.report_code) {
+-+        if (isAdmin && item.report_id) {
+-+            router.visit(route('admin.reports.show', item.report_id));
+-+        } else if (item.report_code) {
+-             router.visit(route('track.show', item.report_code));
+-         }
+-     };
+diff --git a/resources/js/Components/NotificationBell.jsx b/resources/js/Components/NotificationBell.jsx
+index 51483f2..42a786a 100644
+--- a/resources/js/Components/NotificationBell.jsx
++++ b/resources/js/Components/NotificationBell.jsx
+@@ -1,4 +1,4 @@
+-import { router, usePage } from '@inertiajs/react';
++import { Link, router, usePage } from '@inertiajs/react';
+ import { Bell, Inbox, CheckCheck, Megaphone } from 'lucide-react';
+ import Dropdown from '@/Components/Dropdown';
+ 
+@@ -105,6 +105,13 @@ export default function NotificationBell() {
+                             ))
+                         )}
+                     </div>
++
++                    <Link
++                        href={route('notifications.index')}
++                        className="block px-4 py-2.5 text-center text-xs font-medium text-navy/60 hover:text-crimson hover:bg-navy/[0.02] border-t border-navy/5 transition-colors"
++                    >
++                        Lihat semua notifikasi
++                    </Link>
+                 </div>
+             </Dropdown.Content>
+         </Dropdown>
+diff --git a/resources/js/Pages/Notification/Index.jsx b/resources/js/Pages/Notification/Index.jsx
+new file mode 100644
+index 0000000..7258454
+--- /dev/null
++++ b/resources/js/Pages/Notification/Index.jsx
+@@ -0,0 +1,130 @@
++import UserLayout from '@/Layouts/UserLayout';
++import AdminLayout from '@/Layouts/AdminLayout';
++import { Head, router, usePage } from '@inertiajs/react';
++import { Bell, Inbox, CheckCheck, Megaphone } from 'lucide-react';
++
++function Pagination({ links }) {
++    if (!links || links.length <= 3) return null;
++
++    return (
++        <div className="flex flex-wrap gap-1.5 justify-center py-2">
++            {links.map((link, i) => (
++                <button
++                    key={i}
++                    disabled={!link.url}
++                    onClick={() => link.url && router.get(link.url, {}, { preserveScroll: true, preserveState: true })}
++                    className={`min-w-[2.25rem] px-3 py-1.5 text-sm rounded-full transition-colors ${
++                        link.active
++                            ? 'bg-crimson text-white'
++                            : 'bg-navy/5 text-navy/60 hover:bg-navy/10'
++                    } ${!link.url ? 'opacity-40 cursor-not-allowed' : ''}`}
++                    dangerouslySetInnerHTML={{ __html: link.label }}
++                />
++            ))}
++        </div>
++    );
++}
++
++export default function Index({ notifications }) {
++    const { auth } = usePage().props;
++    const isAdmin = auth?.user?.role === 'admin';
++    const Layout = isAdmin ? AdminLayout : UserLayout;
++
++    const items = notifications.data ?? [];
++    const hasUnread = items.some((item) => !item.is_broadcast && !item.is_read);
++
++    const markRead = (id) => {
++        router.patch(route('notifications.read', id), {}, { preserveScroll: true });
++    };
++
++    const markAllRead = () => {
++        router.post(route('notifications.read-all'), {}, { preserveScroll: true });
++    };
++
++    const handleItemClick = (item) => {
++        if (!item.is_broadcast && !item.is_read) {
++            markRead(item.id);
++        }
++        if (isAdmin && item.report_id) {
++            router.visit(route('admin.reports.show', item.report_id));
++        } else if (item.report_code) {
++            router.visit(route('track.show', item.report_code));
++        }
++    };
++
++    return (
++        <Layout title="Notifikasi" subtitle="Semua pemberitahuan yang pernah kamu terima.">
++            <Head title="Notifikasi" />
++
++            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
++                <div className="flex items-center justify-between px-5 py-4 border-b border-navy/5">
++                    <div className="flex items-center gap-2.5">
++                        <div className="w-9 h-9 rounded-full bg-navy/5 flex items-center justify-center text-navy">
++                            <Bell size={16} />
++                        </div>
++                        <p className="font-semibold text-navy text-sm">
++                            {notifications.total} notifikasi
++                        </p>
++                    </div>
++                    {hasUnread && (
++                        <button
++                            onClick={markAllRead}
++                            className="inline-flex items-center gap-1.5 text-sm font-medium text-crimson hover:text-crimson-dark transition-colors"
++                        >
++                            <CheckCheck size={15} /> Tandai semua dibaca
++                        </button>
++                    )}
++                </div>
++
++                <div className="divide-y divide-navy/5">
++                    {items.length === 0 ? (
++                        <div className="px-5 py-16 text-center">
++                            <Inbox className="mx-auto text-gray-200 mb-3" size={32} />
++                            <p className="text-sm text-gray-400">Belum ada notifikasi.</p>
++                        </div>
++                    ) : (
++                        items.map((item) => (
++                            <button
++                                key={item.id}
++                                onClick={() => handleItemClick(item)}
++                                className={`w-full text-left px-5 py-4 flex gap-3.5 hover:bg-navy/[0.02] transition-colors ${
++                                    !item.is_read ? 'bg-crimson/[0.03]' : ''
++                                }`}
++                            >
++                                <div className="mt-0.5 shrink-0">
++                                    {item.is_broadcast ? (
++                                        <div className="w-9 h-9 rounded-full bg-gold/20 flex items-center justify-center">
++                                            <Megaphone size={15} className="text-[#8a6d00]" />
++                                        </div>
++                                    ) : (
++                                        <div
++                                            className={`w-9 h-9 rounded-full flex items-center justify-center ${
++                                                item.is_read ? 'bg-navy/5' : 'bg-crimson/10'
++                                            }`}
++                                        >
++                                            <Bell size={15} className={item.is_read ? 'text-navy/30' : 'text-crimson'} />
++                                        </div>
++                                    )}
++                                </div>
++                                <div className="min-w-0 flex-1">
++                                    <div className="flex items-center gap-2">
++                                        <p className={`text-sm ${item.is_read ? 'text-navy/70' : 'font-semibold text-navy'}`}>
++                                            {item.title}
++                                        </p>
++                                        {!item.is_read && !item.is_broadcast && (
++                                            <span className="w-1.5 h-1.5 rounded-full bg-crimson shrink-0" />
++                                        )}
++                                    </div>
++                                    <p className="text-sm text-gray-500 mt-1">{item.message}</p>
++                                    <p className="text-xs text-gray-400 mt-1.5">{item.created_at}</p>
++                                </div>
++                            </button>
++                        ))
++                    )}
++                </div>
++            </div>
++
++            <Pagination links={notifications.links} />
++        </Layout>
++    );
++}

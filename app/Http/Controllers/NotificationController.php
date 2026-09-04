@@ -9,14 +9,31 @@ use Illuminate\Http\Request;
 class NotificationController extends Controller
 {
     /**
-     * Daftar notifikasi milik user (dipakai kalau nanti ada halaman "Semua Notifikasi").
+     * Halaman "Semua Notifikasi" — daftar lengkap & berpaginasi milik user ini.
      */
     public function index(Request $request)
     {
         $notifications = AppNotification::query()
             ->visibleTo($request->user())
+            ->with('report:id,code')
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString()
+            ->through(function (AppNotification $n) {
+                $isBroadcast = is_null($n->user_id);
+
+                return [
+                    'id' => $n->id,
+                    'type' => $n->type,
+                    'title' => $n->title,
+                    'message' => $n->message,
+                    'report_id' => $n->report?->id,
+                    'report_code' => $n->report?->code,
+                    'is_read' => $isBroadcast ? true : $n->is_read,
+                    'is_broadcast' => $isBroadcast,
+                    'created_at' => $n->created_at->diffForHumans(),
+                ];
+            });
 
         return inertia('Notification/Index', [
             'notifications' => $notifications,

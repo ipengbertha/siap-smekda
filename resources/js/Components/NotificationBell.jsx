@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Bell, Inbox, CheckCheck, Megaphone } from 'lucide-react';
 import Dropdown from '@/Components/Dropdown';
 
@@ -105,6 +105,13 @@ export default function NotificationBell() {
                             ))
                         )}
                     </div>
+
+                    <Link
+                        href={route('notifications.index')}
+                        className="block px-4 py-2.5 text-center text-xs font-medium text-navy/60 hover:text-crimson hover:bg-navy/[0.02] border-t border-navy/5 transition-colors"
+                    >
+                        Lihat semua notifikasi
+                    </Link>
                 </div>
             </Dropdown.Content>
         </Dropdown>
