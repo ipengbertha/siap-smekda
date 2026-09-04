@@ -3,7 +3,8 @@ import { Bell, Inbox, CheckCheck, Megaphone } from 'lucide-react';
 import Dropdown from '@/Components/Dropdown';
 
 export default function NotificationBell() {
-    const { notifications } = usePage().props;
+    const { notifications, auth } = usePage().props;
+    const isAdmin = auth?.user?.role === 'admin';
 
     // Kalau shared prop belum ada (mis. HandleInertiaRequests belum diupdate), jangan crash.
     const unreadCount = notifications?.unread_count ?? 0;
@@ -22,7 +23,9 @@ export default function NotificationBell() {
         if (!item.is_broadcast && !item.is_read) {
             markRead(item.id);
         }
-        if (item.report_code) {
+        if (isAdmin && item.report_id) {
+            router.visit(route('admin.reports.show', item.report_id));
+        } else if (item.report_code) {
             router.visit(route('track.show', item.report_code));
         }
     };

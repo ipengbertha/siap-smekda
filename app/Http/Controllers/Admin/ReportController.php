@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Destination;
 use App\Models\Report;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -74,6 +75,8 @@ class ReportController extends Controller
             'destination_id' => ['nullable', 'exists:destinations,id'],
         ]);
 
+        $statusChanged = $report->status !== $validated['status'];
+
         $report->update([
             'status' => $validated['status'],
             'destination_id' => $validated['destination_id'] ?? $report->destination_id,
@@ -84,6 +87,12 @@ class ReportController extends Controller
             'note' => $validated['note'] ?? null,
             'changed_by' => $request->user()->id,
         ]);
+
+        // Cuma kirim notif kalau statusnya beneran berubah — hindari spam kalau
+        // admin klik simpan tanpa ganti status (mis. cuma mau nambah note/destination).
+        if ($statusChanged) {
+            NotificationService::reportStatusChanged($report, $validated['status']);
+        }
 
         return redirect()->back()->with('success', 'Status aduan berhasil diperbarui.');
     }

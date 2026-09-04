@@ -1,0 +1,208 @@
+diff --git a/app/Http/Controllers/Admin/ReportController.php b/app/Http/Controllers/Admin/ReportController.php
+index 7657c8a..825bc30 100644
+--- a/app/Http/Controllers/Admin/ReportController.php
++++ b/app/Http/Controllers/Admin/ReportController.php
+@@ -6,6 +6,7 @@
+ use App\Models\Category;
+ use App\Models\Destination;
+ use App\Models\Report;
++use App\Services\NotificationService;
+ use Illuminate\Http\RedirectResponse;
+ use Illuminate\Http\Request;
+ use Inertia\Inertia;
+@@ -74,6 +75,8 @@ public function updateStatus(Request $request, Report $report): RedirectResponse
+             'destination_id' => ['nullable', 'exists:destinations,id'],
+         ]);
+ 
++        $statusChanged = $report->status !== $validated['status'];
++
+         $report->update([
+             'status' => $validated['status'],
+             'destination_id' => $validated['destination_id'] ?? $report->destination_id,
+@@ -85,6 +88,12 @@ public function updateStatus(Request $request, Report $report): RedirectResponse
+             'changed_by' => $request->user()->id,
+         ]);
+ 
++        // Cuma kirim notif kalau statusnya beneran berubah — hindari spam kalau
++        // admin klik simpan tanpa ganti status (mis. cuma mau nambah note/destination).
++        if ($statusChanged) {
++            NotificationService::reportStatusChanged($report, $validated['status']);
++        }
++
+         return redirect()->back()->with('success', 'Status aduan berhasil diperbarui.');
+     }
+ 
+diff --git a/app/Http/Controllers/Admin/ReportResponseController.php b/app/Http/Controllers/Admin/ReportResponseController.php
+index 4aa24d5..81ad550 100644
+--- a/app/Http/Controllers/Admin/ReportResponseController.php
++++ b/app/Http/Controllers/Admin/ReportResponseController.php
+@@ -5,6 +5,7 @@
+ use App\Http\Controllers\Controller;
+ use App\Models\Report;
+ use App\Models\ReportResponse;
++use App\Services\NotificationService;
+ use Illuminate\Http\RedirectResponse;
+ use Illuminate\Http\Request;
+ use Inertia\Inertia;
+@@ -58,6 +59,12 @@ public function store(Request $request, Report $report): RedirectResponse
+             ]);
+         }
+ 
++        // Notif "ada tanggapan baru" aja, bukan notif status — biar pelapor nggak
++        // dapet 2 notif buat 1 aksi (status di atas cuma efek samping teknis).
++        if (! $isInternal) {
++            NotificationService::reportResponded($report);
++        }
++
+         return redirect()->back()->with(
+             'success',
+             $isInternal ? 'Catatan internal tersimpan.' : 'Tanggapan berhasil dikirim.'
+diff --git a/app/Http/Controllers/ReportController.php b/app/Http/Controllers/ReportController.php
+index 563ad8e..e16c937 100644
+--- a/app/Http/Controllers/ReportController.php
++++ b/app/Http/Controllers/ReportController.php
+@@ -5,6 +5,7 @@
+ use App\Http\Requests\StoreReportRequest;
+ use App\Models\Category;
+ use App\Models\Report;
++use App\Services\NotificationService;
+ use Illuminate\Http\RedirectResponse;
+ use Illuminate\Support\Facades\Storage;
+ use Inertia\Inertia;
+@@ -54,6 +55,8 @@ public function store(StoreReportRequest $request): RedirectResponse
+             'changed_by' => null,
+         ]);
+ 
++        NotificationService::newReportSubmitted($report);
++
+         return redirect()
+             ->route('reports.index')
+             ->with('success', "Aduan berhasil dikirim dengan kode {$report->code}");
+diff --git a/app/Http/Middleware/HandleInertiaRequests.php b/app/Http/Middleware/HandleInertiaRequests.php
+index 9529afd..83130b0 100644
+--- a/app/Http/Middleware/HandleInertiaRequests.php
++++ b/app/Http/Middleware/HandleInertiaRequests.php
+@@ -66,6 +66,7 @@ protected function notificationsFor($user): array
+                     'type' => $n->type,
+                     'title' => $n->title,
+                     'message' => $n->message,
++                    'report_id' => $n->report?->id,
+                     'report_code' => $n->report?->code,
+                     // broadcast nggak punya status baca per-user, jadi ditampilkan
+                     // sebagai info biasa (bukan "belum dibaca").
+diff --git a/app/Services/NotificationService.php b/app/Services/NotificationService.php
+new file mode 100644
+index 0000000..33207ab
+--- /dev/null
++++ b/app/Services/NotificationService.php
+@@ -0,0 +1,85 @@
++<?php
++
++namespace App\Services;
++
++use App\Models\AppNotification;
++use App\Models\Report;
++use App\Models\User;
++
++class NotificationService
++{
++    protected const STATUS_LABELS = [
++        'terkirim' => 'terkirim',
++        'diterima' => 'diterima',
++        'diproses' => 'sedang diproses',
++        'ditanggapi' => 'ditanggapi',
++        'selesai' => 'selesai',
++        'ditolak' => 'ditolak',
++        'diblokir' => 'diblokir',
++    ];
++
++    /**
++     * Kirim notif ke pelapor saat admin mengubah status laporannya.
++     * Dipanggil dari Admin\ReportController@updateStatus.
++     */
++    public static function reportStatusChanged(Report $report, string $newStatus): void
++    {
++        // Kalau nggak ada user_id (harusnya nggak mungkin, tapi jaga-jaga), skip.
++        if (! $report->user_id) {
++            return;
++        }
++
++        $label = self::STATUS_LABELS[$newStatus] ?? $newStatus;
++
++        AppNotification::create([
++            'user_id' => $report->user_id,
++            'type' => 'sistem',
++            'title' => 'Status laporan diperbarui',
++            'message' => "Laporan \"{$report->title}\" ({$report->code}) sekarang berstatus \"{$label}\".",
++            'report_id' => $report->id,
++        ]);
++    }
++
++    /**
++     * Kirim notif ke pelapor saat admin memberi tanggapan publik (bukan catatan internal).
++     * Dipanggil dari Admin\ReportResponseController@store.
++     */
++    public static function reportResponded(Report $report): void
++    {
++        if (! $report->user_id) {
++            return;
++        }
++
++        AppNotification::create([
++            'user_id' => $report->user_id,
++            'type' => 'sistem',
++            'title' => 'Ada tanggapan baru',
++            'message' => "Admin memberikan tanggapan pada laporan \"{$report->title}\" ({$report->code}).",
++            'report_id' => $report->id,
++        ]);
++    }
++
++    /**
++     * Kirim notif ke semua admin saat ada laporan baru masuk.
++     * Dipanggil dari ReportController@store (sisi user).
++     */
++    public static function newReportSubmitted(Report $report): void
++    {
++        $admins = User::where('role', 'admin')->get(['id']);
++
++        $rows = $admins->map(fn (User $admin) => [
++            'user_id' => $admin->id,
++            'type' => 'sistem',
++            'title' => 'Laporan baru masuk',
++            'message' => "Laporan baru \"{$report->title}\" ({$report->code}) perlu ditindaklanjuti.",
++            'report_id' => $report->id,
++            'is_read' => false,
++            'created_at' => now(),
++            'updated_at' => now(),
++        ]);
++
++        if ($rows->isNotEmpty()) {
++            AppNotification::insert($rows->toArray());
++        }
++    }
++}
+diff --git a/resources/js/Components/NotificationBell.jsx b/resources/js/Components/NotificationBell.jsx
+index b0e1369..51483f2 100644
+--- a/resources/js/Components/NotificationBell.jsx
++++ b/resources/js/Components/NotificationBell.jsx
+@@ -3,7 +3,8 @@ import { Bell, Inbox, CheckCheck, Megaphone } from 'lucide-react';
+ import Dropdown from '@/Components/Dropdown';
+ 
+ export default function NotificationBell() {
+-    const { notifications } = usePage().props;
++    const { notifications, auth } = usePage().props;
++    const isAdmin = auth?.user?.role === 'admin';
+ 
+     // Kalau shared prop belum ada (mis. HandleInertiaRequests belum diupdate), jangan crash.
+     const unreadCount = notifications?.unread_count ?? 0;
+@@ -22,7 +23,9 @@ export default function NotificationBell() {
+         if (!item.is_broadcast && !item.is_read) {
+             markRead(item.id);
+         }
+-        if (item.report_code) {
++        if (isAdmin && item.report_id) {
++            router.visit(route('admin.reports.show', item.report_id));
++        } else if (item.report_code) {
+             router.visit(route('track.show', item.report_code));
+         }
+     };

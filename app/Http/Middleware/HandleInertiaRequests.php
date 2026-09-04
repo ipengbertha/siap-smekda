@@ -66,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                     'type' => $n->type,
                     'title' => $n->title,
                     'message' => $n->message,
+                    'report_id' => $n->report?->id,
                     'report_code' => $n->report?->code,
                     // broadcast nggak punya status baca per-user, jadi ditampilkan
                     // sebagai info biasa (bukan "belum dibaca").

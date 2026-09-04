@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\ReportResponse;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -56,6 +57,12 @@ class ReportResponseController extends Controller
                 'note' => 'Admin memberikan tanggapan.',
                 'changed_by' => $request->user()->id,
             ]);
+        }
+
+        // Notif "ada tanggapan baru" aja, bukan notif status — biar pelapor nggak
+        // dapet 2 notif buat 1 aksi (status di atas cuma efek samping teknis).
+        if (! $isInternal) {
+            NotificationService::reportResponded($report);
         }
 
         return redirect()->back()->with(

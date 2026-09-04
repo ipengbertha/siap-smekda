@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreReportRequest;
 use App\Models\Category;
 use App\Models\Report;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -53,6 +54,8 @@ class ReportController extends Controller
             'note' => 'Aduan berhasil dikirim.',
             'changed_by' => null,
         ]);
+
+        NotificationService::newReportSubmitted($report);
 
         return redirect()
             ->route('reports.index')
