@@ -52,13 +52,15 @@ export default function Index({ users }) {
 
     const createForm = useForm({
         name: '',
+        username: '',
         email: '',
+        phone: '',
         password: '',
         password_confirmation: '',
         role: 'user',
     });
 
-    const editForm = useForm({ name: '', email: '', role: 'user' });
+    const editForm = useForm({ name: '', username: '', email: '', phone: '', role: 'user' });
 
     const openCreate = () => {
         createForm.reset();
@@ -78,7 +80,13 @@ export default function Index({ users }) {
 
     const openEdit = (user) => {
         editForm.clearErrors();
-        editForm.setData({ name: user.name, email: user.email, role: user.role });
+        editForm.setData({
+            name: user.name,
+            username: user.username ?? '',
+            email: user.email,
+            phone: user.phone ?? '',
+            role: user.role,
+        });
         setEditingUser(user);
     };
 
@@ -291,11 +299,30 @@ export default function Index({ users }) {
                         />
                     </Field>
 
+                    <Field label="Username" error={createForm.errors.username}>
+                        <input
+                            type="text"
+                            value={createForm.data.username}
+                            onChange={(e) => createForm.setData('username', e.target.value)}
+                            placeholder="tanpa spasi, contoh: budi_santoso"
+                            className={inputClass}
+                        />
+                    </Field>
+
                     <Field label="Email" error={createForm.errors.email}>
                         <input
                             type="email"
                             value={createForm.data.email}
                             onChange={(e) => createForm.setData('email', e.target.value)}
+                            className={inputClass}
+                        />
+                    </Field>
+
+                    <Field label="No. HP" error={createForm.errors.phone}>
+                        <input
+                            type="text"
+                            value={createForm.data.phone}
+                            onChange={(e) => createForm.setData('phone', e.target.value)}
                             className={inputClass}
                         />
                     </Field>
@@ -362,11 +389,29 @@ export default function Index({ users }) {
                         />
                     </Field>
 
+                    <Field label="Username" error={editForm.errors.username}>
+                        <input
+                            type="text"
+                            value={editForm.data.username}
+                            onChange={(e) => editForm.setData('username', e.target.value)}
+                            className={inputClass}
+                        />
+                    </Field>
+
                     <Field label="Email" error={editForm.errors.email}>
                         <input
                             type="email"
                             value={editForm.data.email}
                             onChange={(e) => editForm.setData('email', e.target.value)}
+                            className={inputClass}
+                        />
+                    </Field>
+
+                    <Field label="No. HP" error={editForm.errors.phone}>
+                        <input
+                            type="text"
+                            value={editForm.data.phone}
+                            onChange={(e) => editForm.setData('phone', e.target.value)}
                             className={inputClass}
                         />
                     </Field>
