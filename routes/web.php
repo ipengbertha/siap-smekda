@@ -3,7 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\ShowcaseController;
+use App\Http\Controllers\SorotanController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\TrackController;
@@ -112,13 +112,13 @@ Route::get('/track/{code}', [TrackController::class, 'show'])->name('track.show'
 
 // Sorotan Publik — laporan featured yang boleh dilihat siapa aja,
 // tapi like/komentar cuma buat yang udah login.
-Route::get('/sorotan', [ShowcaseController::class, 'index'])->name('showcase.index');
-Route::get('/sorotan/{report}', [ShowcaseController::class, 'show'])->name('showcase.show');
+Route::get('/sorotan', [SorotanController::class, 'index'])->name('showcase.index');
+Route::get('/sorotan/{report}', [SorotanController::class, 'show'])->name('showcase.show');
 
 Route::middleware('auth')->group(function () {
-    Route::post('/sorotan/{report}/like', [ShowcaseController::class, 'toggleLike'])->name('showcase.like');
-    Route::post('/sorotan/{report}/komentar', [ShowcaseController::class, 'storeComment'])->name('showcase.comments.store');
-    Route::delete('/sorotan/komentar/{comment}', [ShowcaseController::class, 'destroyComment'])->name('showcase.comments.destroy');
+    Route::post('/sorotan/{report}/like', [SorotanController::class, 'toggleLike'])->name('showcase.like');
+    Route::post('/sorotan/{report}/komentar', [SorotanController::class, 'storeComment'])->name('showcase.comments.store');
+    Route::delete('/sorotan/komentar/{comment}', [SorotanController::class, 'destroyComment'])->name('showcase.comments.destroy');
 });
 
 require __DIR__.'/auth.php';

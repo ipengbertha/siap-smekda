@@ -1,6 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import UserLayout from '@/Layouts/UserLayout';
-import { Inbox, Plus, ArrowRight } from 'lucide-react';
+import { Inbox, Plus, ArrowRight, Pencil, Trash2 } from 'lucide-react';
 
 const statusLabel = {
     terkirim: 'Terkirim',
@@ -23,6 +23,13 @@ const statusStyle = {
 };
 
 export default function Index({ reports }) {
+    const handleDelete = (report) => {
+        if (!confirm(`Yakin mau hapus aduan "${report.title}"? Tindakan ini tidak bisa dibatalkan.`)) {
+            return;
+        }
+        router.delete(route('reports.destroy', report.id));
+    };
+
     return (
         <UserLayout
             title="Laporan Saya"
@@ -52,12 +59,14 @@ export default function Index({ reports }) {
             ) : (
                 <div className="bg-white rounded-2xl shadow-sm divide-y divide-navy/5 overflow-hidden">
                     {reports.map((report) => (
-                        <Link
+                        <div
                             key={report.id}
-                            href={route('track.show', report.code)}
-                            className="group flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-navy/[0.02] transition-colors outline-none focus-visible:bg-navy/[0.03] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crimson/30"
+                            className="group flex items-center justify-between gap-4 p-4 sm:p-5 hover:bg-navy/[0.02] transition-colors"
                         >
-                            <div className="min-w-0">
+                            <Link
+                                href={route('track.show', report.code)}
+                                className="flex-1 min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-crimson/30 rounded-lg"
+                            >
                                 <p className="text-xs text-gray-400 font-mono mb-1">
                                     {report.code}
                                 </p>
@@ -67,20 +76,50 @@ export default function Index({ reports }) {
                                 <p className="text-sm text-gray-500">
                                     {report.category?.name}
                                 </p>
-                            </div>
-                            <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                <span
-                                    className={`text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap ${
-                                        statusStyle[report.status] ?? 'bg-gray-100 text-gray-600'
-                                    }`}
+                            </Link>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                                {(report.can_edit || report.can_delete) && (
+                                    <div className="hidden sm:flex items-center gap-1.5">
+                                        {report.can_edit && (
+                                            <Link
+                                                href={route('reports.edit', report.id)}
+                                                className="w-8 h-8 rounded-full flex items-center justify-center text-navy/40 hover:bg-navy/5 hover:text-navy transition-colors"
+                                                title="Edit aduan"
+                                            >
+                                                <Pencil size={15} />
+                                            </Link>
+                                        )}
+                                        {report.can_delete && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDelete(report)}
+                                                className="w-8 h-8 rounded-full flex items-center justify-center text-navy/40 hover:bg-crimson/10 hover:text-crimson transition-colors"
+                                                title="Hapus aduan"
+                                            >
+                                                <Trash2 size={15} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                <Link
+                                    href={route('track.show', report.code)}
+                                    className="flex flex-col items-end gap-1.5"
                                 >
-                                    {statusLabel[report.status] ?? report.status}
-                                </span>
-                                <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-crimson transition-colors">
-                                    Lihat Detail <ArrowRight size={12} />
-                                </span>
+                                    <span
+                                        className={`text-xs font-medium px-3 py-1 rounded-full whitespace-nowrap ${
+                                            statusStyle[report.status] ?? 'bg-gray-100 text-gray-600'
+                                        }`}
+                                    >
+                                        {statusLabel[report.status] ?? report.status}
+                                    </span>
+                                    <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-crimson transition-colors">
+                                        Lihat Detail <ArrowRight size={12} />
+                                    </span>
+                                </Link>
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             )}

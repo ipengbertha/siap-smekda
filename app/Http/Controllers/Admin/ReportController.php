@@ -1,118 +1,192 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreReportRequest;
+use App\Http\Requests\UpdateReportRequest;
 use App\Models\Category;
-use App\Models\Destination;
 use App\Models\Report;
+use App\Models\ReportSetting;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ReportController extends Controller
 {
-    public const STATUSES = [
-        'terkirim',
-        'diterima',
-        'diproses',
-        'ditanggapi',
-        'selesai',
-        'ditolak',
-        'diblokir',
-    ];
-
-    public function index(Request $request): Response
+    public function create(): Response
     {
-        $reports = Report::query()
-            ->with(['category:id,name', 'destination:id,name', 'user:id,name'])
-            ->withCount('responses')
-            ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id))
-            ->when($request->search, function ($q) use ($request) {
-                $q->where(function ($sub) use ($request) {
-                    $sub->where('code', 'like', "%{$request->search}%")
-                        ->orWhere('title', 'like', "%{$request->search}%");
-                });
-            })
-            ->latest()
-            ->paginate(15)
-            ->withQueryString();
-
-        return Inertia::render('Admin/Reports/Index', [
-            'reports' => $reports,
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'statuses' => self::STATUSES,
-            'filters' => $request->only(['status', 'category_id', 'search']),
+        return Inertia::render('Report/Create', [
+            'categories' => Category::where('is_active', true)
+                ->select('id', 'name')
+                ->get(),
+            'settings' => [
+                'allow_anonymous' => filter_var(ReportSetting::get('report_allow_anonymous', true), FILTER_VALIDATE_BOOLEAN),
+                'max_attachment_count' => (int) ReportSetting::get('report_max_attachment_count', 5),
+                'max_attachment_size_kb' => (int) ReportSetting::get('report_max_attachment_size_kb', 10240),
+                'allowed_attachment_formats' => ReportSetting::get('report_allowed_attachment_formats', 'jpg,jpeg,png,mp4,mov'),
+            ],
         ]);
     }
 
-    public function show(Report $report): Response
+    public function store(StoreReportRequest $request): RedirectResponse
     {
-        $report->load([
-            'category:id,name',
-            'destination:id,name',
-            'user:id,name,email',
-            'attachments',
-            'statusHistories.changedBy:id,name',
-            'responses.user:id,name',
+        $validated = $request->validated();
+        $allowAnonymous = filter_var(ReportSetting::get('report_allow_anonymous', true), FILTER_VALIDATE_BOOLEAN);
+
+        $report = Report::create([
+            'user_id' => $request->user()->id,
+            'type' => $validated['type'],
+            'category_id' => $validated['category_id'],
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            // Kalau admin matiin opsi anonim, paksa false meski request-nya kirim true
+            'is_anonymous' => $allowAnonymous ? ($validated['is_anonymous'] ?? false) : false,
+            'status' => 'terkirim',
         ]);
 
-        return Inertia::render('Admin/Reports/Show', [
-            'report' => $report,
-            'destinations' => Destination::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'statuses' => self::STATUSES,
-        ]);
-    }
+        // Simpan lampiran kalau ada
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store('report-attachments', 'public');
 
-    public function updateStatus(Request $request, Report $report): RedirectResponse
-    {
-        $validated = $request->validate([
-            'status' => ['required', 'in:' . implode(',', self::STATUSES)],
-            'note' => ['nullable', 'string', 'max:1000'],
-            'destination_id' => ['nullable', 'exists:destinations,id'],
-        ]);
-
-        $statusChanged = $report->status !== $validated['status'];
-
-        $report->update([
-            'status' => $validated['status'],
-            'destination_id' => $validated['destination_id'] ?? $report->destination_id,
-        ]);
-
-        $report->statusHistories()->create([
-            'status' => $validated['status'],
-            'note' => $validated['note'] ?? null,
-            'changed_by' => $request->user()->id,
-        ]);
-
-        // Cuma kirim notif kalau statusnya beneran berubah — hindari spam kalau
-        // admin klik simpan tanpa ganti status (mis. cuma mau nambah note/destination).
-        if ($statusChanged) {
-            NotificationService::reportStatusChanged($report, $validated['status']);
+                $report->attachments()->create([
+                    'file_path' => $path,
+                    'file_type' => str_starts_with($file->getMimeType(), 'image') ? 'image' : 'video',
+                ]);
+            }
         }
 
-        return redirect()->back()->with('success', 'Status aduan berhasil diperbarui.');
+        // Catat riwayat status pertama
+        $report->statusHistories()->create([
+            'status' => 'terkirim',
+            'note' => 'Aduan berhasil dikirim.',
+            'changed_by' => null,
+        ]);
+
+        NotificationService::newReportSubmitted($report);
+
+        return redirect()
+            ->route('reports.index')
+            ->with('success', "Aduan berhasil dikirim dengan kode {$report->code}");
     }
 
-    public function toggleFeatured(Report $report): RedirectResponse
+    public function index(): Response
     {
-        $report->update(['is_featured' => ! $report->is_featured]);
+        $reports = Report::where('user_id', request()->user()->id)
+            ->with('category')
+            ->latest()
+            ->get();
 
-        return redirect()->back()->with(
-            'success',
-            $report->is_featured
-                ? 'Laporan ditampilkan di Sorotan Publik.'
-                : 'Laporan dilepas dari Sorotan Publik.'
-        );
+        $canEdit = filter_var(ReportSetting::get('report_allow_edit', true), FILTER_VALIDATE_BOOLEAN);
+        $canDelete = filter_var(ReportSetting::get('report_allow_delete', true), FILTER_VALIDATE_BOOLEAN);
+
+        return Inertia::render('Report/Index', [
+            'reports' => $reports->map(fn (Report $report) => [
+                ...$report->toArray(),
+                'can_edit' => $canEdit && $report->status === 'terkirim',
+                'can_delete' => $canDelete && $report->status === 'terkirim',
+            ]),
+        ]);
     }
 
-    public function destroy(Report $report): RedirectResponse
+    public function edit(Request $request, Report $report): Response
     {
+        $this->authorizeOwnerEdit($request, $report, 'report_allow_edit');
+
+        return Inertia::render('Report/Edit', [
+            'report' => $report->load('attachments')->toArray(),
+            'categories' => Category::where('is_active', true)
+                ->select('id', 'name')
+                ->get(),
+            'settings' => [
+                'allow_anonymous' => filter_var(ReportSetting::get('report_allow_anonymous', true), FILTER_VALIDATE_BOOLEAN),
+                'max_attachment_count' => (int) ReportSetting::get('report_max_attachment_count', 5),
+                'max_attachment_size_kb' => (int) ReportSetting::get('report_max_attachment_size_kb', 10240),
+                'allowed_attachment_formats' => ReportSetting::get('report_allowed_attachment_formats', 'jpg,jpeg,png,mp4,mov'),
+            ],
+        ]);
+    }
+
+    public function update(UpdateReportRequest $request, Report $report): RedirectResponse
+    {
+        $this->authorizeOwnerEdit($request, $report, 'report_allow_edit');
+
+        $validated = $request->validated();
+        $allowAnonymous = filter_var(ReportSetting::get('report_allow_anonymous', true), FILTER_VALIDATE_BOOLEAN);
+
+        // Hapus lampiran lama yang ditandai user untuk dihapus (harus tetap punya laporan ini)
+        if (! empty($validated['removed_attachment_ids'])) {
+            $toRemove = $report->attachments()->whereIn('id', $validated['removed_attachment_ids'])->get();
+            foreach ($toRemove as $attachment) {
+                Storage::disk('public')->delete($attachment->file_path);
+                $attachment->delete();
+            }
+        }
+
+        $maxCount = (int) ReportSetting::get('report_max_attachment_count', 5);
+        $existingCount = $report->attachments()->count();
+        $newCount = $request->hasFile('attachments') ? count($request->file('attachments')) : 0;
+
+        if ($existingCount + $newCount > $maxCount) {
+            return redirect()->back()
+                ->withErrors(['attachments' => "Total lampiran tidak boleh lebih dari {$maxCount}."])
+                ->withInput();
+        }
+
+        $report->update([
+            'category_id' => $validated['category_id'],
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'is_anonymous' => $allowAnonymous ? ($validated['is_anonymous'] ?? false) : false,
+        ]);
+
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store('report-attachments', 'public');
+
+                $report->attachments()->create([
+                    'file_path' => $path,
+                    'file_type' => str_starts_with($file->getMimeType(), 'image') ? 'image' : 'video',
+                ]);
+            }
+        }
+
+        return redirect()
+            ->route('reports.index')
+            ->with('success', 'Aduan berhasil diperbarui.');
+    }
+
+    public function destroy(Request $request, Report $report): RedirectResponse
+    {
+        $this->authorizeOwnerEdit($request, $report, 'report_allow_delete');
+
+        foreach ($report->attachments as $attachment) {
+            Storage::disk('public')->delete($attachment->file_path);
+        }
+
         $report->delete();
 
-        return redirect()->route('admin.reports.index')->with('success', 'Aduan berhasil dihapus.');
+        return redirect()
+            ->route('reports.index')
+            ->with('success', 'Aduan berhasil dihapus.');
+    }
+
+    /**
+     * Pastikan hanya pemilik aduan yang bisa edit/hapus, hanya selagi status masih
+     * 'terkirim' (belum disentuh admin), dan hanya kalau admin masih mengizinkan
+     * lewat Pengaturan Aduan. Dilempar sebagai 403 kalau salah satu syarat gagal.
+     */
+    protected function authorizeOwnerEdit(Request $request, Report $report, string $settingKey): void
+    {
+        abort_unless($report->user_id === $request->user()->id, 403, 'Kamu tidak punya akses ke aduan ini.');
+        abort_unless($report->status === 'terkirim', 403, 'Aduan yang sudah diproses admin tidak bisa diubah/dihapus lagi.');
+        abort_unless(
+            filter_var(ReportSetting::get($settingKey, true), FILTER_VALIDATE_BOOLEAN),
+            403,
+            'Fitur ini sedang dinonaktifkan oleh admin.'
+        );
     }
 }

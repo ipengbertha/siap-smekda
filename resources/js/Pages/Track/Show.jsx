@@ -1,5 +1,5 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, Clock, MessageCircle, Star } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, CheckCircle2, Clock, MessageCircle, Star, Pencil, Trash2 } from 'lucide-react';
 import UserLayout from '@/Layouts/UserLayout';
 
 const statusMap = {
@@ -13,6 +13,13 @@ const statusMap = {
 };
 
 function TrackShowContent({ report, status }) {
+    const handleDelete = () => {
+        if (!confirm(`Yakin mau hapus aduan "${report.title}"? Tindakan ini tidak bisa dibatalkan.`)) {
+            return;
+        }
+        router.delete(route('reports.destroy', report.id));
+    };
+
     return (
         <>
             {/* Header card */}
@@ -49,6 +56,28 @@ function TrackShowContent({ report, status }) {
                         <p className="text-navy font-medium mt-0.5">{report.created_at}</p>
                     </div>
                 </div>
+
+                {(report.can_edit || report.can_delete) && (
+                    <div className="flex items-center gap-2 mt-5 pt-5 border-t border-gray-100">
+                        {report.can_edit && (
+                            <Link
+                                href={route('reports.edit', report.id)}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-navy bg-navy/5 hover:bg-navy/10 px-4 py-2 rounded-full transition-colors"
+                            >
+                                <Pencil size={14} /> Edit Aduan
+                            </Link>
+                        )}
+                        {report.can_delete && (
+                            <button
+                                type="button"
+                                onClick={handleDelete}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium text-crimson bg-crimson/10 hover:bg-crimson/20 px-4 py-2 rounded-full transition-colors"
+                            >
+                                <Trash2 size={14} /> Hapus Aduan
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Riwayat status */}

@@ -33,7 +33,7 @@ function Field({ label, required, error, children }) {
 const inputClass =
     'block w-full rounded-xl border-navy/10 bg-navy/[0.02] text-sm text-navy placeholder-gray-400 shadow-sm focus:border-crimson focus:ring-crimson/30 transition-colors';
 
-export default function Create({ categories }) {
+export default function Create({ categories, settings }) {
     const [selectedType, setSelectedType] = useState('aduan');
     const [attachments, setAttachments] = useState([]);
     const [isAnonymous, setIsAnonymous] = useState(false);
@@ -63,8 +63,8 @@ export default function Create({ categories }) {
 
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
-        if (files.length + attachments.length > 5) {
-            alert('Maksimal 5 lampiran.');
+        if (files.length + attachments.length > settings.max_attachment_count) {
+            alert(`Maksimal ${settings.max_attachment_count} lampiran.`);
             return;
         }
         const newAttachments = [...attachments, ...files];
@@ -169,7 +169,7 @@ export default function Create({ categories }) {
                 </SectionCard>
 
                 {/* LAMPIRAN */}
-                <SectionCard label="Lampiran (opsional, maks 5 file)" dot="bg-gold">
+                <SectionCard label={`Lampiran (opsional, maks ${settings.max_attachment_count} file)`} dot="bg-gold">
                     <label className="flex items-center justify-center gap-2 border-2 border-dashed border-navy/10 rounded-xl py-6 cursor-pointer hover:border-crimson/40 hover:bg-crimson/[0.02] transition-colors">
                         <Upload size={18} className="text-gray-400" />
                         <span className="text-sm text-gray-500">
@@ -208,37 +208,39 @@ export default function Create({ categories }) {
                     )}
                 </SectionCard>
 
-                {/* IDENTITAS */}
-                <SectionCard label="Identitas" dot="bg-purple">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <label
-                            className={`flex-1 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium cursor-pointer transition-colors ${
-                                !isAnonymous ? 'border-crimson bg-crimson/10 text-crimson' : 'border-navy/10 text-navy/60 hover:border-navy/20'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                checked={!isAnonymous}
-                                onChange={() => setIsAnonymous(false)}
-                                className="text-crimson focus:ring-crimson/30"
-                            />
-                            Kirim dengan identitas
-                        </label>
-                        <label
-                            className={`flex-1 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium cursor-pointer transition-colors ${
-                                isAnonymous ? 'border-crimson bg-crimson/10 text-crimson' : 'border-navy/10 text-navy/60 hover:border-navy/20'
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                checked={isAnonymous}
-                                onChange={() => setIsAnonymous(true)}
-                                className="text-crimson focus:ring-crimson/30"
-                            />
-                            Kirim secara anonim
-                        </label>
-                    </div>
-                </SectionCard>
+                {/* IDENTITAS — cuma muncul kalau admin masih mengizinkan kirim anonim */}
+                {settings.allow_anonymous && (
+                    <SectionCard label="Identitas" dot="bg-purple">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <label
+                                className={`flex-1 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium cursor-pointer transition-colors ${
+                                    !isAnonymous ? 'border-crimson bg-crimson/10 text-crimson' : 'border-navy/10 text-navy/60 hover:border-navy/20'
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    checked={!isAnonymous}
+                                    onChange={() => setIsAnonymous(false)}
+                                    className="text-crimson focus:ring-crimson/30"
+                                />
+                                Kirim dengan identitas
+                            </label>
+                            <label
+                                className={`flex-1 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-medium cursor-pointer transition-colors ${
+                                    isAnonymous ? 'border-crimson bg-crimson/10 text-crimson' : 'border-navy/10 text-navy/60 hover:border-navy/20'
+                                }`}
+                            >
+                                <input
+                                    type="radio"
+                                    checked={isAnonymous}
+                                    onChange={() => setIsAnonymous(true)}
+                                    className="text-crimson focus:ring-crimson/30"
+                                />
+                                Kirim secara anonim
+                            </label>
+                        </div>
+                    </SectionCard>
+                )}
 
                 <button
                     type="submit"

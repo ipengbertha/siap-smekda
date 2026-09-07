@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Report;
+use App\Models\ReportSetting;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,7 +15,7 @@ class TrackController extends Controller
         return Inertia::render('Track/Index');
     }
 
-    public function show(string $code): Response
+    public function show(Request $request, string $code): Response
     {
         $report = Report::with([
                 'category:id,name',
@@ -26,8 +28,14 @@ class TrackController extends Controller
             ->where('status', '!=', 'diblokir')
             ->firstOrFail();
 
+        $isOwner = $request->user()?->id === $report->user_id;
+        $canEdit = filter_var(ReportSetting::get('report_allow_edit', true), FILTER_VALIDATE_BOOLEAN);
+        $canDelete = filter_var(ReportSetting::get('report_allow_delete', true), FILTER_VALIDATE_BOOLEAN);
+        $isEditable = $isOwner && $report->status === 'terkirim';
+
         return Inertia::render('Track/Show', [
             'report' => [
+                'id'          => $report->id,
                 'code'        => $report->code,
                 'type'        => $report->type,
                 'title'       => $report->title,
@@ -39,6 +47,8 @@ class TrackController extends Controller
                 'category'    => $report->category?->name,
                 'destination' => $report->destination?->name,
                 'created_at'  => $report->created_at->format('d M Y, H:i'),
+                'can_edit'    => $isEditable && $canEdit,
+                'can_delete'  => $isEditable && $canDelete,
                 'histories'   => $report->statusHistories->map(fn ($h) => [
                     'status'     => $h->status,
                     'note'       => $h->note ?? null,
