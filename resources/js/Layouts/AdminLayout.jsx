@@ -15,6 +15,7 @@ import {
     HelpCircle,
     ListChecks,
     Search,
+    Megaphone,
     Menu,
     X,
     ChevronDown,
@@ -68,6 +69,7 @@ function SidebarContent({ current, actions }) {
 
             <NavGroup label="Kelola">
                 <NavItem href={route('admin.reports.index')} icon={Inbox} label="Kelola Aduan" active={current('admin.reports.*')} />
+                <NavItem href={route('sorotan.index')} icon={Megaphone} label="Sorotan Publik" active={current('sorotan.*')} />
                 <NavItem href={route('admin.responses.index')} icon={MessageSquare} label="Kelola Tanggapan" active={current('admin.responses.*')} />
                 <NavItem href={route('admin.categories.index')} icon={Tag} label="Kelola Kategori" active={current('admin.categories.*')} />
                 <NavItem href={route('admin.destinations.index')} icon={MapPin} label="Kelola Tujuan" active={current('admin.destinations.*')} />

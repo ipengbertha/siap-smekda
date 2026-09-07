@@ -31,7 +31,7 @@ class Report extends Model
 
     protected $casts = [
         'is_anonymous' => 'boolean',
-        'is_featured' => 'boolean', // tambahkan ini
+        'is_featured' => 'boolean',
     ];
 
     // Generate kode otomatis (ADU-2026-00125) setiap kali report baru dibuat
@@ -85,5 +85,35 @@ class Report extends Model
     public function rating(): HasOne
     {
         return $this->hasOne(ReportRating::class);
+    }
+
+    public function likes(): HasMany
+    {
+        return $this->hasMany(ReportLike::class);
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(ReportComment::class)->orderBy('created_at');
+    }
+
+    /**
+     * Laporan yang boleh tampil di halaman publik "Sorotan Publik" —
+     * harus di-featured admin DAN nggak sedang diblokir.
+     */
+    public function scopeFeatured($query)
+    {
+        return $query->where('is_featured', true)->where('status', '!=', 'diblokir');
+    }
+
+    public function isLikedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->relationLoaded('likes')
+            ? $this->likes->contains('user_id', $user->id)
+            : $this->likes()->where('user_id', $user->id)->exists();
     }
 }

@@ -25,12 +25,8 @@ const features = [
     { icon: MessageCircle, title: 'Lebih Cepat Ditindaklanjuti', desc: 'Laporan diteruskan ke pihak terkait dengan alur yang jelas.', color: 'from-gold/40 to-gold/10 text-gold' },
 ];
 
-// Data contoh — nanti diganti data asli dari controller (lihat catatan di bawah)
-const publicComplaints = [
-    { category: 'Fasilitas', status: 'Diproses', title: 'Lampu kelas XI RPL mati sejak minggu lalu', likes: 18, comments: 5 },
-    { category: 'Kantin', status: 'Selesai', title: 'Antrean kantin saat istirahat terlalu panjang', likes: 42, comments: 11 },
-    { category: 'Sarana', status: 'Diproses', title: 'Lapangan basket rusak di beberapa titik', likes: 27, comments: 8 },
-];
+// Data laporan featured dikirim dari LandingController via prop `featuredReports`
+// (lihat penjelasan pemakaian di komponen Landing di bawah).
 
 // Reusable "kicker" badge dipakai di atas tiap heading section
 function SectionKicker({ label }) {
@@ -97,7 +93,7 @@ function Reveal({ children, className = '' }) {
     );
 }
 
-export default function Landing({ canLogin, canRegister, hero, footer, stats, steps, faqs }) {
+export default function Landing({ canLogin, canRegister, hero, footer, stats, steps, faqs, featuredReports }) {
     const [navTrackCode, setNavTrackCode] = useState('');
     const [sectionTrackCode, setSectionTrackCode] = useState('');
     const [openFaq, setOpenFaq] = useState(null);
@@ -278,15 +274,23 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                             Beberapa laporan yang sudah diverifikasi bisa dilihat di sini — biar kita sama-sama tahu apa yang lagi diperbaiki.
                         </p>
                     </div>
-                    <Link href={route('track.index')} className="text-sm font-semibold text-gold hover:text-white transition whitespace-nowrap">
+                    <Link href={route('sorotan.index')} className="text-sm font-semibold text-gold hover:text-white transition whitespace-nowrap">
                         Lihat Semua Aduan →
                     </Link>
                 </div>
+                {(!featuredReports || featuredReports.length === 0) ? (
+                    <GlassCard className="p-8 text-center">
+                        <p className="text-white/50 text-sm">
+                            Belum ada laporan yang disorot. Pantau terus, laporan yang sudah ditindaklanjuti akan tampil di sini.
+                        </p>
+                    </GlassCard>
+                ) : (
                 <div className="grid sm:grid-cols-3 gap-6">
-                    {publicComplaints.map((item, i) => {
+                    {featuredReports.map((item, i) => {
                         const progress = item.status === 'Selesai' ? 100 : item.status === 'Diproses' ? 60 : 25;
                         return (
-                            <GlassCard key={i} className="p-6">
+                            <Link key={i} href={route('sorotan.show', item.code)}>
+                            <GlassCard className="p-6 h-full hover:bg-white/[0.15] transition-colors cursor-pointer">
                                 <div className="flex items-center justify-between mb-4">
                                     <span className="bg-purple/20 text-purple text-xs font-semibold px-3 py-1 rounded-full">
                                         {item.category}
@@ -313,9 +317,11 @@ export default function Landing({ canLogin, canRegister, hero, footer, stats, st
                                     </span>
                                 </div>
                             </GlassCard>
+                            </Link>
                         );
                     })}
                 </div>
+                )}
             </section>
             </Reveal>
 

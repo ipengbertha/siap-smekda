@@ -1,6 +1,6 @@
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, Image, Film, ShieldAlert, Trash2, Send, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Image, Film, ShieldAlert, Trash2, Send, Eye, EyeOff, Star } from 'lucide-react';
 
 const statusLabel = {
     terkirim: 'Terkirim',
@@ -78,6 +78,16 @@ export default function Show({ report, destinations, statuses }) {
         }
     };
 
+    const toggleFeatured = () => {
+        const confirmMsg = report.is_featured
+            ? 'Sembunyikan aduan ini dari Sorotan Publik?'
+            : 'Tampilkan aduan ini di Sorotan Publik? Pengguna lain akan bisa melihat, menyukai, dan berkomentar di laporan ini.';
+
+        if (confirm(confirmMsg)) {
+            router.patch(route('admin.reports.toggle-featured', report.id), {}, { preserveScroll: true });
+        }
+    };
+
     return (
         <AdminLayout
             title={`Detail Aduan ${report.code}`}
@@ -95,11 +105,26 @@ export default function Show({ report, destinations, statuses }) {
 
                 {/* DETAIL ADUAN */}
                 <SectionCard label="Detail Aduan" dot="bg-crimson">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 gap-2">
                         <span className="font-mono text-xs text-gray-500">{report.code}</span>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle[report.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                            {statusLabel[report.status] ?? report.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle[report.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                {statusLabel[report.status] ?? report.status}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={toggleFeatured}
+                                title={report.is_featured ? 'Sembunyikan dari Sorotan Publik' : 'Tampilkan di Sorotan Publik'}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                    report.is_featured
+                                        ? 'bg-gold text-[#8a6d00] hover:bg-gold/80'
+                                        : 'bg-navy/5 text-navy/50 hover:bg-navy/10 hover:text-navy'
+                                }`}
+                            >
+                                <Star size={13} fill={report.is_featured ? 'currentColor' : 'none'} />
+                                {report.is_featured ? 'Featured' : 'Jadikan Featured'}
+                            </button>
+                        </div>
                     </div>
                     <h3 className="text-lg font-bold text-navy mb-2">{report.title}</h3>
                     <p className="text-sm text-gray-600 whitespace-pre-line mb-4">{report.description}</p>

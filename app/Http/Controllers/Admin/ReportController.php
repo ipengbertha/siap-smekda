@@ -97,6 +97,18 @@ class ReportController extends Controller
         return redirect()->back()->with('success', 'Status aduan berhasil diperbarui.');
     }
 
+    public function toggleFeatured(Report $report): RedirectResponse
+    {
+        $report->update(['is_featured' => ! $report->is_featured]);
+
+        return redirect()->back()->with(
+            'success',
+            $report->is_featured
+                ? 'Laporan ditampilkan di Sorotan Publik.'
+                : 'Laporan dilepas dari Sorotan Publik.'
+        );
+    }
+
     public function destroy(Report $report): RedirectResponse
     {
         $report->delete();

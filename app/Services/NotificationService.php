@@ -60,6 +60,44 @@ class NotificationService
     }
 
     /**
+     * Kirim notif ke pelapor saat laporannya (yang sudah featured) di-like orang lain.
+     * Dipanggil dari SorotanController@like. Skip kalau yang like adalah pelapor sendiri.
+     */
+    public static function reportLiked(Report $report, User $liker): void
+    {
+        if (! $report->user_id || $report->user_id === $liker->id) {
+            return;
+        }
+
+        AppNotification::create([
+            'user_id' => $report->user_id,
+            'type' => 'sistem',
+            'title' => 'Laporanmu disukai',
+            'message' => "{$liker->name} menyukai laporan \"{$report->title}\" ({$report->code}) di Sorotan Publik.",
+            'report_id' => $report->id,
+        ]);
+    }
+
+    /**
+     * Kirim notif ke pelapor saat laporannya (yang sudah featured) dapat komentar.
+     * Dipanggil dari SorotanController@storeComment. Skip kalau yang komentar adalah pelapor sendiri.
+     */
+    public static function reportCommented(Report $report, User $commenter): void
+    {
+        if (! $report->user_id || $report->user_id === $commenter->id) {
+            return;
+        }
+
+        AppNotification::create([
+            'user_id' => $report->user_id,
+            'type' => 'sistem',
+            'title' => 'Komentar baru di laporanmu',
+            'message' => "{$commenter->name} berkomentar di laporan \"{$report->title}\" ({$report->code}) di Sorotan Publik.",
+            'report_id' => $report->id,
+        ]);
+    }
+
+    /**
      * Kirim notif ke semua admin saat ada laporan baru masuk.
      * Dipanggil dari ReportController@store (sisi user).
      */

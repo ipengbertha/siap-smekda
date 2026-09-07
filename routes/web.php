@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ShowcaseController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\TrackController;
@@ -96,6 +97,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/{report}', [AdminReportController::class, 'show'])->name('reports.show');
     Route::patch('/reports/{report}/status', [AdminReportController::class, 'updateStatus'])->name('reports.update-status');
+    Route::patch('/reports/{report}/toggle-featured', [AdminReportController::class, 'toggleFeatured'])->name('reports.toggle-featured');
     Route::delete('/reports/{report}', [AdminReportController::class, 'destroy'])->name('reports.destroy');
     Route::post('/reports/{report}/responses', [ReportResponseController::class, 'store'])->name('reports.responses.store');
 
@@ -107,5 +109,16 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
 Route::get('/track', [TrackController::class, 'index'])->name('track.index');
 Route::get('/track/{code}', [TrackController::class, 'show'])->name('track.show');
+
+// Sorotan Publik — laporan featured yang boleh dilihat siapa aja,
+// tapi like/komentar cuma buat yang udah login.
+Route::get('/sorotan', [ShowcaseController::class, 'index'])->name('showcase.index');
+Route::get('/sorotan/{report}', [ShowcaseController::class, 'show'])->name('showcase.show');
+
+Route::middleware('auth')->group(function () {
+    Route::post('/sorotan/{report}/like', [ShowcaseController::class, 'toggleLike'])->name('showcase.like');
+    Route::post('/sorotan/{report}/komentar', [ShowcaseController::class, 'storeComment'])->name('showcase.comments.store');
+    Route::delete('/sorotan/komentar/{comment}', [ShowcaseController::class, 'destroyComment'])->name('showcase.comments.destroy');
+});
 
 require __DIR__.'/auth.php';

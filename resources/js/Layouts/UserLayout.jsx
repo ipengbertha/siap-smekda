@@ -6,6 +6,7 @@ import {
     LayoutDashboard,
     ListChecks,
     Search,
+    Megaphone,
     Menu,
     X,
     ChevronDown,
@@ -50,6 +51,7 @@ function SidebarContent({ current, actions }) {
             <NavGroup label="Menu">
                 <NavItem href={route('dashboard')} icon={LayoutDashboard} label="Dashboard" active={current('dashboard')} />
                 <NavItem href={route('reports.index')} icon={ListChecks} label="Laporan Saya" active={current('reports.index')} />
+                <NavItem href={route('sorotan.index')} icon={Megaphone} label="Sorotan Publik" active={current('sorotan.*')} />
                 {/* active hanya untuk halaman pencarian (track.index), BUKAN track.* —
                     supaya nggak ikut nyala saat masuk ke detail (track.show) lewat klik baris "Laporan Saya" */}
                 <NavItem href={route('track.index')} icon={Search} label="Lacak Aduan Lain" active={current('track.index')} />

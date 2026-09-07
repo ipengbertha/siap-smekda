@@ -6,6 +6,7 @@ use App\Models\LandingFaq;
 use App\Models\LandingSetting;
 use App\Models\LandingStat;
 use App\Models\LandingStep;
+use App\Models\Report;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -55,6 +56,30 @@ class LandingController extends Controller
                     'q' => $faq->question,
                     'a' => $faq->answer,
                 ]),
+
+            'featuredReports' => Report::featured()
+                ->with('category:id,name')
+                ->withCount(['likes', 'comments'])
+                ->latest()
+                ->take(3)
+                ->get()
+                ->map(fn ($report) => [
+                    'code' => $report->code,
+                    'category' => $report->category?->name ?? 'Umum',
+                    'status' => self::STATUS_DISPLAY[$report->status] ?? ucfirst($report->status),
+                    'title' => $report->title,
+                    'likes' => $report->likes_count,
+                    'comments' => $report->comments_count,
+                ]),
         ]);
     }
+
+    protected const STATUS_DISPLAY = [
+        'terkirim' => 'Terkirim',
+        'diterima' => 'Diterima',
+        'diproses' => 'Diproses',
+        'ditanggapi' => 'Ditanggapi',
+        'selesai' => 'Selesai',
+        'ditolak' => 'Ditolak',
+    ];
 }
