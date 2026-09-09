@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\BannedWordController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\ReportResponseController;
+use App\Http\Controllers\Admin\ReportSettingController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -35,6 +36,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/aduan', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/aduan/buat', [ReportController::class, 'create'])->name('reports.create');
     Route::post('/aduan', [ReportController::class, 'store'])->name('reports.store');
+    Route::get('/aduan/{report}/edit', [ReportController::class, 'edit'])->name('reports.edit');
+    Route::put('/aduan/{report}', [ReportController::class, 'update'])->name('reports.update');
+    Route::delete('/aduan/{report}', [ReportController::class, 'destroy'])->name('reports.destroy');
 
     // Notifikasi
     Route::get('/notifikasi', [NotificationController::class, 'index'])->name('notifications.index');
@@ -93,6 +97,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.update-status');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
+    // Pengaturan Aduan
+    Route::get('/reports/settings', [ReportSettingController::class, 'index'])->name('reports.settings');
+    Route::put('/reports/settings', [ReportSettingController::class, 'update'])->name('reports.settings.update');
+
     // Kelola Aduan
     Route::get('/reports', [AdminReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/{report}', [AdminReportController::class, 'show'])->name('reports.show');
@@ -112,13 +120,13 @@ Route::get('/track/{code}', [TrackController::class, 'show'])->name('track.show'
 
 // Sorotan Publik — laporan featured yang boleh dilihat siapa aja,
 // tapi like/komentar cuma buat yang udah login.
-Route::get('/sorotan', [SorotanController::class, 'index'])->name('showcase.index');
-Route::get('/sorotan/{report}', [SorotanController::class, 'show'])->name('showcase.show');
+Route::get('/sorotan', [SorotanController::class, 'index'])->name('sorotan.index');
+Route::get('/sorotan/{report}', [SorotanController::class, 'show'])->name('sorotan.show');
 
 Route::middleware('auth')->group(function () {
-    Route::post('/sorotan/{report}/like', [SorotanController::class, 'toggleLike'])->name('showcase.like');
-    Route::post('/sorotan/{report}/komentar', [SorotanController::class, 'storeComment'])->name('showcase.comments.store');
-    Route::delete('/sorotan/komentar/{comment}', [SorotanController::class, 'destroyComment'])->name('showcase.comments.destroy');
+    Route::post('/sorotan/{report}/like', [SorotanController::class, 'toggleLike'])->name('sorotan.like');
+    Route::post('/sorotan/{report}/komentar', [SorotanController::class, 'storeComment'])->name('sorotan.comments.store');
+    Route::delete('/sorotan/komentar/{comment}', [SorotanController::class, 'destroyComment'])->name('sorotan.comments.destroy');
 });
 
 require __DIR__.'/auth.php';

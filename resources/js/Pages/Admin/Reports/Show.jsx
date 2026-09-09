@@ -37,7 +37,7 @@ function SectionCard({ label, dot, children }) {
 const inputClass =
     'block w-full rounded-xl border-navy/10 bg-navy/[0.02] text-sm text-navy placeholder-gray-400 shadow-sm focus:border-crimson focus:ring-crimson/30 transition-colors';
 
-export default function Show({ report, destinations, statuses }) {
+export default function Show({ report, destinations, statuses, activeStatuses }) {
     const statusForm = useForm({
         status: report.status,
         note: '',
@@ -194,7 +194,7 @@ export default function Show({ report, destinations, statuses }) {
                                     onChange={(e) => statusForm.setData('status', e.target.value)}
                                     className={inputClass}
                                 >
-                                    {statuses.map((status) => (
+                                    {(activeStatuses ?? statuses).map((status) => (
                                         <option key={status} value={status}>
                                             {statusLabel[status] ?? status}
                                         </option>

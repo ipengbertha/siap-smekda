@@ -68,7 +68,8 @@ function SidebarContent({ current, actions }) {
             </NavGroup>
 
             <NavGroup label="Kelola">
-                <NavItem href={route('admin.reports.index')} icon={Inbox} label="Kelola Aduan" active={current('admin.reports.*')} />
+                <NavItem href={route('admin.reports.index')} icon={Inbox} label="Kelola Aduan" active={current('admin.reports.index') || current('admin.reports.show')} />
+                <NavItem href={route('admin.reports.settings')} icon={Settings} label="Pengaturan Aduan" active={current('admin.reports.settings')} />
                 <NavItem href={route('sorotan.index')} icon={Megaphone} label="Sorotan Publik" active={current('sorotan.*')} />
                 <NavItem href={route('admin.responses.index')} icon={MessageSquare} label="Kelola Tanggapan" active={current('admin.responses.*')} />
                 <NavItem href={route('admin.categories.index')} icon={Tag} label="Kelola Kategori" active={current('admin.categories.*')} />
