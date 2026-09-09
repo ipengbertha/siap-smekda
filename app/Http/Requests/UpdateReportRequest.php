@@ -7,11 +7,14 @@ use App\Models\ReportSetting;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreReportRequest extends FormRequest
+class UpdateReportRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // izin sudah dicek lewat middleware auth di route
+        // Otorisasi kepemilikan + status + setting report_allow_edit
+        // dicek di ReportController@update lewat ReportPolicy-style check,
+        // supaya pesan error bisa lebih spesifik daripada 403 form request generik.
+        return true;
     }
 
     public function rules(): array
@@ -21,13 +24,16 @@ class StoreReportRequest extends FormRequest
         $formats = ReportSetting::get('report_allowed_attachment_formats', 'jpg,jpeg,png,mp4,mov');
 
         return [
-            'type' => ['required', 'in:aduan,aspirasi'],
             'category_id' => ['required', 'exists:categories,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'min:10'],
             'is_anonymous' => ['boolean'],
+            // Lampiran baru yang ditambahkan saat edit
             'attachments' => ['nullable', 'array', "max:{$maxCount}"],
             'attachments.*' => ['file', "mimes:{$formats}", "max:{$maxSizeKb}"],
+            // ID lampiran lama yang dihapus user saat edit
+            'removed_attachment_ids' => ['nullable', 'array'],
+            'removed_attachment_ids.*' => ['integer', 'exists:report_attachments,id'],
         ];
     }
 
@@ -48,10 +54,6 @@ class StoreReportRequest extends FormRequest
         ];
     }
 
-    /**
-     * Tolak aduan yang judul/isinya mengandung kata terlarang yang
-     * diatur admin lewat menu Kelola Kata Terlarang.
-     */
     public function withValidator(ValidatorContract $validator): void
     {
         $validator->after(function (ValidatorContract $validator) {

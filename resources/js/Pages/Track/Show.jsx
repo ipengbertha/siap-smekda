@@ -1,213 +1,374 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, CheckCircle2, Clock, MessageCircle, Star, Pencil, Trash2 } from 'lucide-react';
-import UserLayout from '@/Layouts/UserLayout';
+import AdminLayout from '@/Layouts/AdminLayout';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ArrowLeft, Image, Film, ShieldAlert, Trash2, Send, Eye, EyeOff, Star } from 'lucide-react';
 
-const statusMap = {
-    terkirim:   { label: 'Terkirim',    color: 'bg-gray-100 text-gray-600' },
-    diterima:   { label: 'Diterima',    color: 'bg-purple/15 text-purple' },
-    diproses:   { label: 'Diproses',    color: 'bg-gold/20 text-[#8a6d00]' },
-    ditanggapi: { label: 'Ditanggapi',  color: 'bg-purple/15 text-purple' },
-    selesai:    { label: 'Selesai',     color: 'bg-emerald-100 text-emerald-700' },
-    ditolak:    { label: 'Ditolak',     color: 'bg-crimson/10 text-crimson' },
-    diblokir:   { label: 'Diblokir',    color: 'bg-navy text-white' },
+const statusLabel = {
+    terkirim: 'Terkirim',
+    diterima: 'Diterima',
+    diproses: 'Diproses',
+    ditanggapi: 'Ditanggapi',
+    selesai: 'Selesai',
+    ditolak: 'Ditolak',
+    diblokir: 'Diblokir',
 };
 
-function TrackShowContent({ report, status }) {
-    const handleDelete = () => {
-        if (!confirm(`Yakin mau hapus aduan "${report.title}"? Tindakan ini tidak bisa dibatalkan.`)) {
-            return;
-        }
-        router.delete(route('reports.destroy', report.id));
-    };
+const statusStyle = {
+    terkirim: 'bg-gray-100 text-gray-600',
+    diterima: 'bg-purple/15 text-purple',
+    diproses: 'bg-gold/20 text-[#8a6d00]',
+    ditanggapi: 'bg-purple/15 text-purple',
+    selesai: 'bg-emerald-100 text-emerald-700',
+    ditolak: 'bg-crimson/10 text-crimson',
+    diblokir: 'bg-navy text-white',
+};
 
+function SectionCard({ label, dot, children }) {
     return (
-        <>
-            {/* Header card */}
-            <div className="bg-white rounded-2xl border border-navy/5 shadow-[0_10px_40px_-15px_rgba(17,1,46,0.15)] p-6 mb-6">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className="text-xs text-gray-400 uppercase tracking-wide">{report.code}</p>
-                        <h1 className="text-xl font-bold text-navy mt-1">{report.title}</h1>
-                    </div>
-                    <span className={`text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap ${status.color}`}>
-                        {status.label}
-                    </span>
-                </div>
-
-                <p className="text-sm text-gray-600 mt-4">{report.description}</p>
-
-                <div className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t border-gray-100 text-sm">
-                    <div>
-                        <p className="text-gray-400 text-xs">Kategori</p>
-                        <p className="text-navy font-medium mt-0.5">{report.category ?? '-'}</p>
-                    </div>
-                    <div>
-                        <p className="text-gray-400 text-xs">Tujuan</p>
-                        <p className="text-navy font-medium mt-0.5">{report.destination ?? '-'}</p>
-                    </div>
-                    <div>
-                        <p className="text-gray-400 text-xs">Pelapor</p>
-                        <p className="text-navy font-medium mt-0.5">
-                            {report.is_anonymous ? 'Anonim' : (report.reporter_name ?? '-')}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-gray-400 text-xs">Dikirim</p>
-                        <p className="text-navy font-medium mt-0.5">{report.created_at}</p>
-                    </div>
-                </div>
-
-                {(report.can_edit || report.can_delete) && (
-                    <div className="flex items-center gap-2 mt-5 pt-5 border-t border-gray-100">
-                        {report.can_edit && (
-                            <Link
-                                href={route('reports.edit', report.id)}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium text-navy bg-navy/5 hover:bg-navy/10 px-4 py-2 rounded-full transition-colors"
-                            >
-                                <Pencil size={14} /> Edit Aduan
-                            </Link>
-                        )}
-                        {report.can_delete && (
-                            <button
-                                type="button"
-                                onClick={handleDelete}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium text-crimson bg-crimson/10 hover:bg-crimson/20 px-4 py-2 rounded-full transition-colors"
-                            >
-                                <Trash2 size={14} /> Hapus Aduan
-                            </button>
-                        )}
-                    </div>
-                )}
+        <div className="bg-navy/[0.03] rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-4 px-1">
+                <span className={`w-2 h-2 rounded-full ${dot}`} />
+                <h3 className="text-sm font-semibold text-navy">{label}</h3>
             </div>
-
-            {/* Riwayat status */}
-            {report.histories?.length > 0 && (
-                <div className="bg-white rounded-2xl border border-navy/5 shadow-[0_10px_40px_-15px_rgba(17,1,46,0.15)] p-6 mb-6">
-                    <h2 className="font-semibold text-navy mb-4 flex items-center gap-2">
-                        <Clock size={18} /> Riwayat Status
-                    </h2>
-                    <div className="space-y-4">
-                        {report.histories.map((h, i) => (
-                            <div key={i} className="flex gap-3">
-                                <div className="mt-1">
-                                    <CheckCircle2 size={16} className="text-purple" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-navy">
-                                        {statusMap[h.status]?.label ?? h.status}
-                                    </p>
-                                    {h.note && <p className="text-sm text-gray-500 mt-0.5">{h.note}</p>}
-                                    <p className="text-xs text-gray-400 mt-0.5">{h.created_at}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Tanggapan admin */}
-            {report.responses?.length > 0 && (
-                <div className="bg-white rounded-2xl border border-navy/5 shadow-[0_10px_40px_-15px_rgba(17,1,46,0.15)] p-6 mb-6">
-                    <h2 className="font-semibold text-navy mb-4 flex items-center gap-2">
-                        <MessageCircle size={18} /> Tanggapan
-                    </h2>
-                    <div className="space-y-4">
-                        {report.responses.map((r, i) => (
-                            <div key={i} className="bg-crimson/5 border border-crimson/10 rounded-lg p-4">
-                                <p className="text-sm text-navy">{r.message}</p>
-                                <p className="text-xs text-gray-400 mt-2">{r.created_at}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Rating jika sudah ada */}
-            {report.rating && (
-                <div className="bg-white rounded-2xl border border-navy/5 shadow-[0_10px_40px_-15px_rgba(17,1,46,0.15)] p-6">
-                    <h2 className="font-semibold text-navy mb-3 flex items-center gap-2">
-                        <Star size={18} /> Rating Kamu
-                    </h2>
-                    <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                                key={i}
-                                size={18}
-                                className={i < report.rating.score ? 'text-gold fill-gold' : 'text-gray-200'}
-                            />
-                        ))}
-                    </div>
-                    {report.rating.is_resolved && (
-                        <p className="text-xs text-gray-400 mt-2">
-                            Masalah terselesaikan: {' '}
-                            <span className="font-medium text-navy">
-                                {{ ya: 'Ya', sebagian: 'Sebagian', belum: 'Belum' }[report.rating.is_resolved]}
-                            </span>
-                        </p>
-                    )}
-                    {report.rating.comment && (
-                        <p className="text-sm text-gray-500 mt-2">{report.rating.comment}</p>
-                    )}
-                </div>
-            )}
-        </>
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm">{children}</div>
+        </div>
     );
 }
 
-export default function TrackShow({ report }) {
-    const { auth } = usePage().props;
-    const isLoggedIn = !!auth?.user;
-    const status = statusMap[report.status] ?? { label: report.status, color: 'bg-gray-100 text-gray-700' };
+const inputClass =
+    'block w-full rounded-xl border-navy/10 bg-navy/[0.02] text-sm text-navy placeholder-gray-400 shadow-sm focus:border-crimson focus:ring-crimson/30 transition-colors';
 
-    // User yang login: nyatu di dalam UserLayout (sidebar + topbar), tanpa nav/background terpisah.
-    if (isLoggedIn) {
-        return (
-            <UserLayout
-                title={report.title}
-                subtitle={`${report.code} · ${status.label}`}
-                headerAction={
-                    <Link
-                        href={route('reports.index')}
-                        className="inline-flex items-center gap-1.5 text-navy text-sm font-medium bg-navy/5 hover:bg-navy/10 px-4 py-2 rounded-full transition-colors w-fit"
-                    >
-                        <ArrowLeft size={15} /> Laporan Saya
-                    </Link>
-                }
-            >
-                <Head title={`Lacak ${report.code} - SIAP SMEKDA`} />
-                <div className="max-w-2xl">
-                    <TrackShowContent report={report} status={status} />
-                </div>
-            </UserLayout>
-        );
-    }
+export default function Show({ report, destinations, statuses, activeStatuses }) {
+    const statusForm = useForm({
+        status: report.status,
+        note: '',
+        destination_id: report.destination?.id ?? '',
+    });
 
-    // Tamu (belum login): tetap halaman standalone.
+    const responseForm = useForm({ message: '', is_internal: false });
+
+    const submitStatus = (e) => {
+        e.preventDefault();
+        statusForm.patch(route('admin.reports.update-status', report.id), {
+            preserveScroll: true,
+            onSuccess: () => statusForm.setData('note', ''),
+        });
+    };
+
+    const submitResponse = (e) => {
+        e.preventDefault();
+        responseForm.post(route('admin.reports.responses.store', report.id), {
+            preserveScroll: true,
+            onSuccess: () => responseForm.reset(),
+        });
+    };
+
+    const blockReport = () => {
+        if (confirm('Blokir aduan ini? Aduan akan disembunyikan dan tidak bisa diproses lebih lanjut.')) {
+            router.patch(
+                route('admin.reports.update-status', report.id),
+                { status: 'diblokir', note: 'Aduan diblokir oleh admin.' },
+                { preserveScroll: true }
+            );
+        }
+    };
+
+    const destroy = () => {
+        if (confirm(`Yakin mau hapus aduan "${report.code}"? Tindakan ini tidak bisa dibatalkan.`)) {
+            router.delete(route('admin.reports.destroy', report.id));
+        }
+    };
+
+    const toggleFeatured = () => {
+        const confirmMsg = report.is_featured
+            ? 'Sembunyikan aduan ini dari Sorotan Publik?'
+            : 'Tampilkan aduan ini di Sorotan Publik? Pengguna lain akan bisa melihat, menyukai, dan berkomentar di laporan ini.';
+
+        if (confirm(confirmMsg)) {
+            router.patch(route('admin.reports.toggle-featured', report.id), {}, { preserveScroll: true });
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-[#faf9fc] relative overflow-hidden">
-            <Head title={`Lacak ${report.code} - SIAP SMEKDA`} />
+        <AdminLayout
+            title={`Detail Aduan ${report.code}`}
+            subtitle="Kelola status, tujuan, dan tanggapan untuk aduan ini."
+        >
+            <Head title={`Aduan ${report.code}`} />
 
-            {/* Aksen gradasi blur halus di background, konsisten dengan warna brand */}
-            <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-                <div className="absolute -top-24 -right-16 w-80 h-80 bg-crimson/10 rounded-full blur-[100px]" />
-                <div className="absolute top-1/3 -left-20 w-72 h-72 bg-purple/10 rounded-full blur-[100px]" />
-                <div className="absolute bottom-[-15%] right-1/4 w-72 h-72 bg-gold/10 rounded-full blur-[100px]" />
+            <div className="space-y-5 max-w-4xl">
+                <Link
+                    href={route('admin.reports.index')}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-crimson hover:text-crimson-dark"
+                >
+                    <ArrowLeft size={15} /> Kembali ke daftar
+                </Link>
+
+                {/* DETAIL ADUAN */}
+                <SectionCard label="Detail Aduan" dot="bg-crimson">
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                        <span className="font-mono text-xs text-gray-500">{report.code}</span>
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusStyle[report.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                {statusLabel[report.status] ?? report.status}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={toggleFeatured}
+                                title={report.is_featured ? 'Sembunyikan dari Sorotan Publik' : 'Tampilkan di Sorotan Publik'}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                    report.is_featured
+                                        ? 'bg-gold text-[#8a6d00] hover:bg-gold/80'
+                                        : 'bg-navy/5 text-navy/50 hover:bg-navy/10 hover:text-navy'
+                                }`}
+                            >
+                                <Star size={13} fill={report.is_featured ? 'currentColor' : 'none'} />
+                                {report.is_featured ? 'Featured' : 'Jadikan Featured'}
+                            </button>
+                        </div>
+                    </div>
+                    <h3 className="text-lg font-bold text-navy mb-2">{report.title}</h3>
+                    <p className="text-sm text-gray-600 whitespace-pre-line mb-4">{report.description}</p>
+
+                    <dl className="grid grid-cols-2 gap-4 text-sm pt-4 border-t border-navy/5">
+                        <div>
+                            <dt className="text-gray-400 text-xs mb-0.5">Tipe</dt>
+                            <dd className="text-navy capitalize font-medium">{report.type}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-gray-400 text-xs mb-0.5">Kategori</dt>
+                            <dd className="text-navy font-medium">{report.category?.name ?? '-'}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-gray-400 text-xs mb-0.5">Tujuan</dt>
+                            <dd className="text-navy font-medium">{report.destination?.name ?? '-'}</dd>
+                        </div>
+                        <div>
+                            <dt className="text-gray-400 text-xs mb-0.5">Pelapor</dt>
+                            <dd className="text-navy font-medium">
+                                {report.is_anonymous ? 'Anonim' : report.user?.name ?? report.reporter_name ?? '-'}
+                            </dd>
+                        </div>
+                        {!report.is_anonymous && report.user?.email && (
+                            <div>
+                                <dt className="text-gray-400 text-xs mb-0.5">Email</dt>
+                                <dd className="text-navy font-medium">{report.user.email}</dd>
+                            </div>
+                        )}
+                        {report.reporter_contact && (
+                            <div>
+                                <dt className="text-gray-400 text-xs mb-0.5">Kontak</dt>
+                                <dd className="text-navy font-medium">{report.reporter_contact}</dd>
+                            </div>
+                        )}
+                    </dl>
+
+                    {report.attachments?.length > 0 && (
+                        <div className="pt-4 mt-4 border-t border-navy/5">
+                            <p className="text-gray-400 text-xs mb-2">Lampiran</p>
+                            <div className="flex flex-wrap gap-2">
+                                {report.attachments.map((att) => (
+                                    <a
+                                        key={att.id}
+                                        href={`/storage/${att.file_path}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 bg-navy/5 rounded-full text-navy hover:bg-navy/10 transition-colors"
+                                    >
+                                        {att.file_type === 'image' ? <Image size={13} /> : <Film size={13} />}
+                                        Lihat lampiran
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </SectionCard>
+
+                {/* UBAH STATUS */}
+                <SectionCard label="Ubah Status Aduan" dot="bg-gold">
+                    <form onSubmit={submitStatus} className="space-y-4">
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-navy/70 mb-1.5">Status</label>
+                                <select
+                                    value={statusForm.data.status}
+                                    onChange={(e) => statusForm.setData('status', e.target.value)}
+                                    className={inputClass}
+                                >
+                                    {(activeStatuses ?? statuses).map((status) => (
+                                        <option key={status} value={status}>
+                                            {statusLabel[status] ?? status}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-navy/70 mb-1.5">Tujuan</label>
+                                <select
+                                    value={statusForm.data.destination_id}
+                                    onChange={(e) => statusForm.setData('destination_id', e.target.value)}
+                                    className={inputClass}
+                                >
+                                    <option value="">- Belum ditentukan -</option>
+                                    {destinations.map((dest) => (
+                                        <option key={dest.id} value={dest.id}>
+                                            {dest.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-navy/70 mb-1.5">Catatan (opsional)</label>
+                            <textarea
+                                rows={2}
+                                value={statusForm.data.note}
+                                onChange={(e) => statusForm.setData('note', e.target.value)}
+                                placeholder="Catatan internal terkait perubahan status ini"
+                                className={inputClass}
+                            />
+                        </div>
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                            <button
+                                type="submit"
+                                disabled={statusForm.processing}
+                                className="px-5 py-2.5 bg-crimson text-white text-sm font-semibold rounded-full hover:bg-crimson-dark transition-colors disabled:opacity-50"
+                            >
+                                Simpan Status
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={blockReport}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#8a6d00] hover:bg-gold/10 rounded-full transition-colors"
+                                >
+                                    <ShieldAlert size={15} /> Blokir Aduan
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={destroy}
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-crimson hover:bg-crimson/10 rounded-full transition-colors"
+                                >
+                                    <Trash2 size={15} /> Hapus Aduan
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </SectionCard>
+
+                {/* RIWAYAT STATUS */}
+                {report.status_histories?.length > 0 && (
+                    <SectionCard label="Riwayat Status" dot="bg-purple">
+                        <ol className="space-y-4">
+                            {report.status_histories.map((h) => (
+                                <li key={h.id} className="text-sm border-l-2 border-purple/20 pl-4 relative">
+                                    <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-purple" />
+                                    <span className="font-semibold text-navy">{statusLabel[h.status] ?? h.status}</span>
+                                    {h.note && <span className="text-gray-500"> — {h.note}</span>}
+                                    <div className="text-xs text-gray-400 mt-0.5">
+                                        {new Date(h.created_at).toLocaleString('id-ID')}
+                                        {h.changed_by && ` · oleh ${h.changed_by.name}`}
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                    </SectionCard>
+                )}
+
+                {/* TANGGAPAN */}
+                <SectionCard label="Tanggapan" dot="bg-emerald-400">
+                    {report.responses?.length === 0 && (
+                        <p className="text-sm text-gray-400 mb-4">Belum ada tanggapan.</p>
+                    )}
+
+                    <div className="space-y-2.5 mb-4">
+                        {report.responses?.map((r) => (
+                            <div
+                                key={r.id}
+                                className={`p-3.5 rounded-xl text-sm ${
+                                    r.is_internal
+                                        ? 'bg-gold/10 border border-gold/30'
+                                        : r.is_admin
+                                        ? 'bg-crimson/5 border border-crimson/10'
+                                        : 'bg-navy/[0.03]'
+                                }`}
+                            >
+                                <div className="flex justify-between items-center text-xs text-gray-400 mb-1.5">
+                                    <span className="font-semibold text-navy/70 inline-flex items-center gap-1.5">
+                                        {r.is_admin ? `Admin${r.user ? ` (${r.user.name})` : ''}` : r.user?.name ?? 'Pelapor'}
+                                        {r.is_internal && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gold/20 text-[#8a6d00] text-[10px] font-semibold">
+                                                <EyeOff size={10} /> Internal
+                                            </span>
+                                        )}
+                                    </span>
+                                    <span>{new Date(r.created_at).toLocaleString('id-ID')}</span>
+                                </div>
+                                <p className="text-navy">{r.message}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <form onSubmit={submitResponse} className="space-y-3 pt-4 border-t border-navy/5">
+                        <textarea
+                            rows={3}
+                            value={responseForm.data.message}
+                            onChange={(e) => responseForm.setData('message', e.target.value)}
+                            placeholder="Tulis tanggapan untuk pelapor..."
+                            className={inputClass}
+                        />
+                        {responseForm.errors.message && (
+                            <p className="text-xs text-crimson">{responseForm.errors.message}</p>
+                        )}
+
+                        <div>
+                            <label className="block text-xs font-medium text-navy/70 mb-1.5">
+                                Tujuan tanggapan
+                            </label>
+                            <div className="inline-flex rounded-full bg-navy/[0.04] p-1 gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => responseForm.setData('is_internal', false)}
+                                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                                        !responseForm.data.is_internal
+                                            ? 'bg-crimson text-white'
+                                            : 'text-navy/50 hover:text-navy'
+                                    }`}
+                                >
+                                    <Eye size={13} /> Kirim ke Pelapor
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => responseForm.setData('is_internal', true)}
+                                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                                        responseForm.data.is_internal
+                                            ? 'bg-gold text-[#3f3300]'
+                                            : 'text-navy/50 hover:text-navy'
+                                    }`}
+                                >
+                                    <EyeOff size={13} /> Catatan Internal
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-gray-400 mt-1.5">
+                                {responseForm.data.is_internal
+                                    ? 'Catatan ini cuma kelihatan di dashboard admin, pelapor nggak akan melihatnya di halaman lacak.'
+                                    : 'Tanggapan ini akan langsung tampil ke pelapor di halaman lacak aduan.'}
+                            </p>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={responseForm.processing}
+                            className={`inline-flex items-center gap-1.5 px-5 py-2.5 text-white text-sm font-semibold rounded-full transition-colors disabled:opacity-50 ${
+                                responseForm.data.is_internal
+                                    ? 'bg-gold text-[#3f3300] hover:bg-gold/90'
+                                    : 'bg-crimson hover:bg-crimson-dark'
+                            }`}
+                        >
+                            <Send size={14} /> {responseForm.data.is_internal ? 'Simpan Catatan' : 'Kirim Tanggapan'}
+                        </button>
+                    </form>
+                </SectionCard>
             </div>
-
-            <nav className="bg-navy">
-                <div className="mx-auto max-w-3xl px-6 py-4">
-                    <Link
-                        href={route('track.index')}
-                        className="inline-flex items-center gap-1.5 text-white text-sm font-medium bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition-colors w-fit"
-                    >
-                        <ArrowLeft size={15} /> Lacak Kode Lain
-                    </Link>
-                </div>
-            </nav>
-
-            <div className="mx-auto max-w-2xl px-6 py-12">
-                <TrackShowContent report={report} status={status} />
-            </div>
-        </div>
+        </AdminLayout>
     );
 }
