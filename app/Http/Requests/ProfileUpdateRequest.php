@@ -18,6 +18,13 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'username' => [
+                'required',
+                'string',
+                'max:255',
+                'alpha_dash',
+                Rule::unique(User::class)->ignore($this->user()->id),
+            ],
             'email' => [
                 'required',
                 'string',
@@ -26,6 +33,9 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            'phone' => ['required', 'string', 'max:20'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'], // maks 2MB
+            'remove_photo' => ['nullable', 'boolean'],
         ];
     }
 }

@@ -1,39 +1,30 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import AdminLayout from '@/Layouts/AdminLayout';
+import UserLayout from '@/Layouts/UserLayout';
+import { Head, usePage } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
-import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
+import ProfileInfoForm from './Partials/ProfileInfoForm';
 
 export default function Edit({ mustVerifyEmail, status }) {
+    const { auth } = usePage().props;
+    const isAdmin = auth.user.role === 'admin';
+    const Layout = isAdmin ? AdminLayout : UserLayout;
+
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Profile
-                </h2>
-            }
+        <Layout
+            title={isAdmin ? 'Profil Admin' : 'Profil Saya'}
+            subtitle="Kelola informasi akun dan keamanan login kamu."
         >
-            <Head title="Profile" />
+            <Head title={isAdmin ? 'Profil Admin' : 'Profil Saya'} />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <UpdateProfileInformationForm
-                            mustVerifyEmail={mustVerifyEmail}
-                            status={status}
-                            className="max-w-xl"
-                        />
-                    </div>
+            <div className="space-y-5 max-w-2xl">
+                <ProfileInfoForm mustVerifyEmail={mustVerifyEmail} status={status} user={auth.user} />
+                <UpdatePasswordForm />
 
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <UpdatePasswordForm className="max-w-xl" />
-                    </div>
-
-                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
-                        <DeleteUserForm className="max-w-xl" />
-                    </div>
-                </div>
+                {/* Hapus akun sengaja disembunyikan buat admin — supaya admin nggak
+                    tanpa sadar menghapus satu-satunya akun admin yang aktif. */}
+                {!isAdmin && <DeleteUserForm />}
             </div>
-        </AuthenticatedLayout>
+        </Layout>
     );
 }
