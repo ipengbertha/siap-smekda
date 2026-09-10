@@ -30,6 +30,11 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'notify_new_report',
+        'notify_report_responded',
+        'notify_status_changed',
+        'notify_report_completed',
+        'notify_pengumuman',
     ];
 
     /**
@@ -52,6 +57,11 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'notify_new_report' => 'boolean',
+            'notify_report_responded' => 'boolean',
+            'notify_status_changed' => 'boolean',
+            'notify_report_completed' => 'boolean',
+            'notify_pengumuman' => 'boolean',
         ];
     }
 

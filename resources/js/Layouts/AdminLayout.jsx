@@ -1,92 +1,9 @@
-import { Link, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import Dropdown from '@/Components/Dropdown';
 import NotificationBell from '@/Components/NotificationBell';
-import {
-    LayoutDashboard,
-    Inbox,
-    MessageSquare,
-    Tag,
-    MapPin,
-    ShieldAlert,
-    Users,
-    Settings,
-    BarChart3,
-    HelpCircle,
-    ListChecks,
-    Search,
-    Megaphone,
-    Menu,
-    X,
-    ChevronDown,
-    Mail,
-    Phone,
-    Link2,
-} from 'lucide-react';
-
-function NavGroup({ label, children }) {
-    return (
-        <div className="mb-6">
-            <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/30">
-                {label}
-            </p>
-            <div className="space-y-1">{children}</div>
-        </div>
-    );
-}
-
-function NavItem({ href, icon: Icon, label, active }) {
-    return (
-        <Link
-            href={href}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                active ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/10 hover:text-white'
-            }`}
-        >
-            <Icon size={17} strokeWidth={2} />
-            {label}
-        </Link>
-    );
-}
-
-function SidebarContent({ current, actions }) {
-    return (
-        <>
-            <div className="flex items-center gap-2 px-2 mb-8">
-                <img src="/images/SIAP-SMEKDA.png" alt="SIAP SMEKDA" className="h-9 w-auto" />
-            </div>
-
-            <NavGroup label="Menu">
-                <NavItem href={route('dashboard')} icon={LayoutDashboard} label="Dashboard" active={current('dashboard')} />
-            </NavGroup>
-
-            <NavGroup label="Landing Page">
-                <NavItem href={route('admin.landing.settings')} icon={Settings} label="Pengaturan Umum" active={current('admin.landing.settings')} />
-                <NavItem href={route('admin.landing.stats')} icon={BarChart3} label="Statistik" active={current('admin.landing.stats')} />
-                <NavItem href={route('admin.landing.faqs')} icon={HelpCircle} label="FAQ" active={current('admin.landing.faqs')} />
-                <NavItem href={route('admin.landing.steps')} icon={ListChecks} label="Cara Kerja" active={current('admin.landing.steps')} />
-            </NavGroup>
-
-            <NavGroup label="Kelola">
-                <NavItem href={route('admin.reports.index')} icon={Inbox} label="Kelola Aduan" active={current('admin.reports.index') || current('admin.reports.show')} />
-                <NavItem href={route('admin.reports.settings')} icon={Settings} label="Pengaturan Aduan" active={current('admin.reports.settings')} />
-                <NavItem href={route('sorotan.index')} icon={Megaphone} label="Sorotan Publik" active={current('sorotan.*')} />
-                <NavItem href={route('admin.responses.index')} icon={MessageSquare} label="Kelola Tanggapan" active={current('admin.responses.*')} />
-                <NavItem href={route('admin.categories.index')} icon={Tag} label="Kelola Kategori" active={current('admin.categories.*')} />
-                <NavItem href={route('admin.destinations.index')} icon={MapPin} label="Kelola Tujuan" active={current('admin.destinations.*')} />
-                <NavItem href={route('admin.banned-words.index')} icon={ShieldAlert} label="Kata Terlarang" active={current('admin.banned-words.*')} />
-                <NavItem href={route('admin.users.index')} icon={Users} label="Kelola User" active={current('admin.users.*')} />
-            </NavGroup>
-
-            {/* Slot aksi halaman — dulu di topbar, sekarang di bawah sidebar */}
-            {actions && (
-                <div className="mt-auto pt-4 border-t border-white/10">
-                    {actions}
-                </div>
-            )}
-        </>
-    );
-}
+import AdminSidebar from '@/Components/AdminSidebar';
+import { Menu, X, ChevronDown, Mail, Phone, MapPin, Link2 } from 'lucide-react';
 
 function AccountControl({ user }) {
     return (
@@ -113,13 +30,13 @@ function AccountControl({ user }) {
     );
 }
 
-function AdminFooter() {
+function AdminFooter({ logoUrl }) {
     return (
         <div className="bg-gradient-to-br from-navy via-navy-light to-navy px-6 sm:px-12 py-12">
             <div className="max-w-[1400px] mx-auto">
                 <div className="grid md:grid-cols-2 gap-10 pb-10 border-b border-white/10">
                     <div>
-                        <img src="/images/SIAP-SMEKDA.png" alt="SIAP SMEKDA" className="h-10 w-auto mb-4" />
+                        <img src={logoUrl || '/images/SIAP-SMEKDA.png'} alt="Logo" className="h-10 w-auto mb-4" />
                         <p className="text-sm text-white/50 max-w-xs leading-relaxed">
                             Sistem Informasi Aspirasi &amp; Pengaduan &mdash; menjembatani suara warga sekolah menuju perubahan nyata.
                         </p>
@@ -163,7 +80,9 @@ function AdminFooter() {
 }
 
 export default function AdminLayout({ title, subtitle, actions, children }) {
-    const user = usePage().props.auth.user;
+    const { auth, systemSettings } = usePage().props;
+    const user = auth.user;
+    const logoUrl = systemSettings?.logo_siap_url;
     const current = (pattern) => route().current(pattern);
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -175,8 +94,8 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                 <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-navy via-navy-light to-navy p-4 relative overflow-hidden">
                     <div className="absolute top-[-20%] right-[-30%] w-56 h-56 bg-crimson/25 rounded-full blur-[80px] pointer-events-none" />
                     <div className="absolute bottom-[-10%] left-[-20%] w-48 h-48 bg-gold/15 rounded-full blur-[80px] pointer-events-none" />
-                    <div className="relative flex flex-col flex-1">
-                        <SidebarContent current={current} actions={actions} />
+                    <div className="relative flex flex-col flex-1 overflow-y-auto">
+                        <AdminSidebar current={current} actions={actions} logoUrl={logoUrl} />
                     </div>
                 </aside>
 
@@ -189,8 +108,8 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                             <button onClick={() => setMobileOpen(false)} className="relative self-end p-2 text-white/50 hover:text-white">
                                 <X size={20} />
                             </button>
-                            <div className="relative flex flex-col flex-1">
-                                <SidebarContent current={current} actions={actions} />
+                            <div className="relative flex flex-col flex-1 overflow-y-auto">
+                                <AdminSidebar current={current} actions={actions} logoUrl={logoUrl} />
                             </div>
                         </aside>
                     </div>
@@ -207,15 +126,6 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
                         <div className="min-w-0">
                             <p className="text-xs text-gray-400">Selamat datang,</p>
                             <h1 className="font-sans font-bold text-lg text-navy truncate">{user.name}</h1>
-                        </div>
-
-                        <div className="hidden md:flex items-center gap-2 bg-navy/5 rounded-full px-4 py-2 w-72 ml-4">
-                            <Search size={15} className="text-gray-400 shrink-0" />
-                            <input
-                                type="text"
-                                placeholder="Cari kode aduan..."
-                                className="flex-1 border-0 bg-transparent focus:ring-0 text-sm text-navy placeholder-gray-400 p-0"
-                            />
                         </div>
 
                         <div className="ml-auto flex items-center gap-3">
@@ -246,7 +156,7 @@ export default function AdminLayout({ title, subtitle, actions, children }) {
 
         </div>
 
-        <AdminFooter />
+        <AdminFooter logoUrl={logoUrl} />
         </>
     );
 }

@@ -7,8 +7,10 @@ use App\Http\Controllers\SorotanController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\TrackController;
+use App\Http\Controllers\NotificationSettingController;
 use App\Http\Controllers\Admin\LandingStatController;
 use App\Http\Controllers\Admin\LandingSettingController;
+use App\Http\Controllers\Admin\SystemSettingController;
 use App\Http\Controllers\Admin\LandingFaqController;
 use App\Http\Controllers\Admin\LandingStepController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -18,6 +20,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\ReportResponseController;
 use App\Http\Controllers\Admin\ReportSettingController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -47,6 +50,10 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Pengaturan Sistem (identitas: nama sistem, nama sekolah, logo, favicon, kontak)
+    Route::get('/system/settings', [SystemSettingController::class, 'index'])->name('system.settings');
+    Route::put('/system/settings', [SystemSettingController::class, 'update'])->name('system.settings.update');
+
     Route::get('/landing/settings', [LandingSettingController::class, 'index'])->name('landing.settings');
     Route::put('/landing/settings', [LandingSettingController::class, 'update'])->name('landing.settings.update');
 
@@ -113,6 +120,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/responses', [ReportResponseController::class, 'index'])->name('responses.index');
     Route::put('/responses/{response}', [ReportResponseController::class, 'update'])->name('responses.update');
     Route::delete('/responses/{response}', [ReportResponseController::class, 'destroy'])->name('responses.destroy');
+
+    // Kelola Pengumuman
+    Route::get('/announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
 });
 
 Route::get('/track', [TrackController::class, 'index'])->name('track.index');
@@ -122,6 +133,9 @@ Route::get('/track/{code}', [TrackController::class, 'show'])->name('track.show'
 // tapi like/komentar cuma buat yang udah login.
 Route::get('/sorotan', [SorotanController::class, 'index'])->name('sorotan.index');
 Route::get('/sorotan/{report}', [SorotanController::class, 'show'])->name('sorotan.show');
+
+Route::get('/notification-settings', [NotificationSettingController::class, 'index'])->name('notification-settings.index');
+Route::put('/notification-settings', [NotificationSettingController::class, 'update'])->name('notification-settings.update');
 
 Route::middleware('auth')->group(function () {
     Route::post('/sorotan/{report}/like', [SorotanController::class, 'toggleLike'])->name('sorotan.like');

@@ -1,71 +1,9 @@
-import { Link, usePage } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import Dropdown from '@/Components/Dropdown';
 import NotificationBell from '@/Components/NotificationBell';
-import {
-    LayoutDashboard,
-    ListChecks,
-    Search,
-    Megaphone,
-    Menu,
-    X,
-    ChevronDown,
-    Mail,
-    Phone,
-    MapPin,
-    Link2,
-} from 'lucide-react';
-
-function NavGroup({ label, children }) {
-    return (
-        <div className="mb-6">
-            <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/30">
-                {label}
-            </p>
-            <div className="space-y-1">{children}</div>
-        </div>
-    );
-}
-
-function NavItem({ href, icon: Icon, label, active }) {
-    return (
-        <Link
-            href={href}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-                active ? 'bg-white/15 text-white' : 'text-white/50 hover:bg-white/10 hover:text-white'
-            }`}
-        >
-            <Icon size={17} strokeWidth={2} />
-            {label}
-        </Link>
-    );
-}
-
-function SidebarContent({ current, actions }) {
-    return (
-        <>
-            <div className="flex items-center gap-2 px-2 mb-8">
-                <img src="/images/SIAP-SMEKDA.png" alt="SIAP SMEKDA" className="h-9 w-auto" />
-            </div>
-
-            <NavGroup label="Menu">
-                <NavItem href={route('dashboard')} icon={LayoutDashboard} label="Dashboard" active={current('dashboard')} />
-                <NavItem href={route('reports.index')} icon={ListChecks} label="Laporan Saya" active={current('reports.index')} />
-                <NavItem href={route('sorotan.index')} icon={Megaphone} label="Sorotan Publik" active={current('sorotan.*')} />
-                {/* active hanya untuk halaman pencarian (track.index), BUKAN track.* —
-                    supaya nggak ikut nyala saat masuk ke detail (track.show) lewat klik baris "Laporan Saya" */}
-                <NavItem href={route('track.index')} icon={Search} label="Lacak Aduan Lain" active={current('track.index')} />
-            </NavGroup>
-
-            {/* Slot aksi halaman — CTA utama "Buat Aduan" */}
-            {actions && (
-                <div className="mt-auto pt-4 border-t border-white/10">
-                    {actions}
-                </div>
-            )}
-        </>
-    );
-}
+import UserSidebar from '@/Components/UserSidebar';
+import { Search, Menu, X, ChevronDown, Mail, Phone, MapPin, Link2 } from 'lucide-react';
 
 function AccountControl({ user }) {
     return (
@@ -154,8 +92,8 @@ export default function UserLayout({ title, subtitle, headerAction, showSearch =
                 <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-navy via-navy-light to-navy p-4 relative overflow-hidden">
                     <div className="absolute top-[-20%] right-[-30%] w-56 h-56 bg-crimson/25 rounded-full blur-[80px] pointer-events-none" />
                     <div className="absolute bottom-[-10%] left-[-20%] w-48 h-48 bg-gold/15 rounded-full blur-[80px] pointer-events-none" />
-                    <div className="relative flex flex-col flex-1">
-                        <SidebarContent current={current} />
+                    <div className="relative flex flex-col flex-1 overflow-y-auto">
+                        <UserSidebar current={current} />
                     </div>
                 </aside>
 
@@ -168,8 +106,8 @@ export default function UserLayout({ title, subtitle, headerAction, showSearch =
                             <button onClick={() => setMobileOpen(false)} className="relative self-end p-2 text-white/50 hover:text-white">
                                 <X size={20} />
                             </button>
-                            <div className="relative flex flex-col flex-1">
-                                <SidebarContent current={current} />
+                            <div className="relative flex flex-col flex-1 overflow-y-auto">
+                                <UserSidebar current={current} />
                             </div>
                         </aside>
                     </div>

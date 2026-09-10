@@ -3,7 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Models\AppNotification;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -38,6 +40,26 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
             ],
             'notifications' => $user ? $this->notificationsFor($user) : null,
+            'systemSettings' => $this->systemSettings(),
+        ];
+    }
+
+    /**
+     * Identitas sistem (nama, nama sekolah, logo) dishare ke semua halaman
+     * supaya sidebar/footer/dsb bisa pakai logo yang diupload admin,
+     * bukan file statis yang di-hardcode.
+     */
+    protected function systemSettings(): array
+    {
+        $settings = SystemSetting::pluck('value', 'key');
+        $fileUrl = fn (?string $path) => $path ? Storage::url($path) : null;
+
+        return [
+            'system_name' => $settings->get('system_name', 'SIAP SMEKDA'),
+            'school_name' => $settings->get('school_name', ''),
+            'tagline'     => $settings->get('tagline', ''),
+            'logo_siap_url'    => $fileUrl($settings->get('logo_siap')),
+            'logo_sekolah_url' => $fileUrl($settings->get('logo_sekolah')),
         ];
     }
 
